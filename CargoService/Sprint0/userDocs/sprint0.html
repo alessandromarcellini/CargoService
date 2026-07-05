@@ -241,7 +241,7 @@ div.imagedesc{
 
 <div class="body"> 
 <h2>Introduction</h2>
-
+<div class="remark">
 
 	A Maritime Cargo shipping company (fron now on, simply company) intends to automate the operations of load of containers in the ship's cargo hold (or simply hold). To this end, the company plans to employ a Differential Drive Robot (from now, called cargorobot).<br>
 	The hold is a rectangular, flat area with an Input/Output port (IOPort). The area provides 4 slots to store the containers and a slot named slot5.<br>
@@ -253,11 +253,12 @@ div.imagedesc{
 	• The slots5 depicts an area, where the cargorobot must temporarily store a container, before to place it in one of the slots1-4. During temporary storage, a 'marker' device labels the container with an identification barcode and signals when this marking activity is completed.<br>
 	• The IOPort is a device with a pushbutton and a display. The pushbutton is pressed by the customer in order to send a request to load a container on the cargo. The display is used to show the answer to the request and to show the current state of the hold.<br>
 	• The sensor associated to the IOPort is a device (a sonar) used to detect the presence of a container, when it measures a distance D, such that D < DFREE/2, during a reasonable time (e.g. 3 secs).
+</div>
+
 
 
 
 <h2>Requirements</h2>
- 
 <div class="remark">
 
 	The company asks us to build service named cargoservice that should work as follows.<br>
@@ -277,10 +278,117 @@ div.imagedesc{
 
 </div>
 
- 
 
 <h2>Requirement analysis</h2>
 <div class="remark">
+<ul>
+	<li> CONTAINER: A container is a rectangular box, with a barcode label.
+					It is modelled as a Plain Java Object (POJO) with the following attributes:
+					<ul>
+						<li> barcode: a numeric string that uniquely identifies the container</li>
+						<li> length (LC): a integer value that represents the length of the container</li>
+						<li> width (WC): a integer value that represents the width of the container</li>
+					</ul>
+					<br>
+	<pre>
+	public interface IContainer {
+		public String getBarcode();
+		public int getLength();
+		public int getWidth();
+	}
+	</pre>
+	</li>
+
+	<br>
+	<li> SLOT: A slot is a rectangular area, with the same length (LC) and width (WC) dimensions of a container, and can be occupied by a container.
+			It is modeled as a Plain Java Object (POJO) with the following attributes:
+			<ul>
+				<li> id: a number from 0 to 5 that uniquely identifies the slot
+						If the id equals 0, the slot represents a generic area of the hold.
+						If the id equals 1,2,3,4, the slot represents one of the four areas of the hold reserved to store a container.
+						If the id equals 5, the slot represents the area of the hold reserved to temporarily store a container, before to place it in one of the slots1-4.
+				</li>
+				<li> content: a reference to the container currently occupying the slot, or null if the slot is empty</li>
+			</ul>
+			<br>
+	<pre>
+	public interface ISlot {
+		public int getId();
+		public IContainer getContent();
+		public void setContent(IContainer container);
+	}
+	</pre>
+	</li>
+
+	<br>
+	<li> STATE OF THE HOLD: The state of the hold describes the current state of the hold, and it is shown on the display of the IOPort.
+		 It is modeled as an enumerative type with the following values:
+			<ul>
+				<li> OUT_OF_SERVICE: the hold is out of service</li>
+				<li> ENGAGED: the hold is engaged in a load operation</li>
+				<li> DISENGAGED: the hold is disengaged from a load operation</li>
+			</ul>
+	</li>
+
+	<br>
+	<li> HOLD: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to store containers and one slot reserved to temporarily storage.		
+		The Hold can be modeled as Plain Java Object (POJO) with the following attributes:
+		<ul>
+			<li>a logical grid of cells of size LC x WC, where each of one, identified by a pair of coordinates (i,j), is a slot</li>
+			<li> state of the hold</li>
+		</ul>
+		<br>
+	
+	<pre>
+	public interface IHold {
+		public ISlot getSlot(int id);
+		public ISlot[][] getHold();
+		public HoldState getState();
+		public void setState(HoldState state);
+		public void setSlot(int id, ISlot slot);
+	}
+	</pre>
+	</li>
+	<li> CARGOROBOT: The cargorobot is a differential drive robot, that can move containers from one slot to another slot of the hold.<br>
+	<br>
+	The DDR is a robot that can move forward, backward, rotate, and stop. Obviously, these actions are meant as commands, but we need to be more specific.<br>
+	<br>
+	– Question to the client: is the software representing the DDR already available, or do we have to build it ourselves?<br>
+	– Answer: The VirtualRobot26 simulator is available, which defines a set of basic commands for the robot in CRIL. This simulator is presented as a service.<br>
+	<br>
+	The DDR problem (for the problem analyst)<br>
+	It is necessary to examine whether the service provided:<br>
+	– is sufficient to solve the problem<br>
+	– is suitable for direct use at the code level<br>
+	
+	</li>	</li>
+	<br>
+
+	<li> PUSH BUTTON:
+
+	</li>
+	<br>
+
+
+	<li> DISPLAY:
+
+	</li>
+	<br>
+
+	<li> LED:
+
+	</li>
+	<br>
+
+	<li> I/O PORT:
+
+	</li>
+	<br>
+
+</ul>
+
+
+
 
 </div>
  
