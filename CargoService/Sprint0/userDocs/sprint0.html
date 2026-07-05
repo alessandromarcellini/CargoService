@@ -241,10 +241,38 @@ div.imagedesc{
 
 <div class="body"> 
 <h2>Introduction</h2>
- 
+
+
+	A Maritime Cargo shipping company (fron now on, simply company) intends to automate the operations of load of containers in the ship's cargo hold (or simply hold). To this end, the company plans to employ a Differential Drive Robot (from now, called cargorobot).<br>
+	The hold is a rectangular, flat area with an Input/Output port (IOPort). The area provides 4 slots to store the containers and a slot named slot5.<br>
+	<br>
+	<img src="./img/intro_view.jpg" alt="cargoservice" width="30%" height="30%"><br>
+	<br>
+	In the picture above:<br>
+	• The slots1-4 depict the hold areas reserved to store one container each,<br>
+	• The slots5 depicts an area, where the cargorobot must temporarily store a container, before to place it in one of the slots1-4. During temporary storage, a 'marker' device labels the container with an identification barcode and signals when this marking activity is completed.<br>
+	• The IOPort is a device with a pushbutton and a display. The pushbutton is pressed by the customer in order to send a request to load a container on the cargo. The display is used to show the answer to the request and to show the current state of the hold.<br>
+	• The sensor associated to the IOPort is a device (a sonar) used to detect the presence of a container, when it measures a distance D, such that D < DFREE/2, during a reasonable time (e.g. 3 secs).
+
+
+
 <h2>Requirements</h2>
  
 <div class="remark">
+
+	The company asks us to build service named cargoservice that should work as follows.<br>
+	The cargoservice is able to receive a request to load a container sent by some customer by using the pushbutton of the IOPort.<br>
+	<br>
+	• It sends the answer retrylater, if the IOPort is currently occupied by a container or if the system is Out of service<br>
+	• It rejects the request when the hold is already full, i.e. the slots1-4 are already occupied.<br>
+	• Otherwise, it considers the system as engaged, detects a free slot and returns as answer the name of such a reserved slot. While engaged, the system must blink a Led.<br>
+	<br>
+	When the request to load is accepted, the customer must move the container in the sensor area within prefixed amount of time (e.g. 30 secs), otherwise the systems becomes disengaged. Then, the cargoservice uses the cargorobot to move the container from the IOPort to the slot5 (for marking the container) and then to the reserved slot.<br>
+	<br>
+	The service must also show on the display on the IOPort:<br>
+	• the current state of the hold<br>
+	• the message 'Service working', when it is all is going well<br>
+	• the message 'Out of service' if the sonar sensor measures a distance D > DFREE for at least 3 secs (perhaps a failure of the sonar).
 
 
 </div>
@@ -295,7 +323,7 @@ By Marcellini Alessandro email: alessandr.marcellin2@studio.unibo.it,
 <img src="./img/alessandro_marcellini.jpg" alt="emiglio" width="8%" height="8%">
 <br><br>
 And Villani Alessandro email: alessandro.villani4@studio.unibo.it,
-<img src="./img/parcel_sleeping.JPG" alt="emiglio" width="8%" height="8%">
+<img src="./img/alessandro_villani.jpg" alt="emiglio" width="8%" height="8%">
 <br><br>
 <a href="https://github.com/alessandromarcellini/CargoService" target="_blank">GIT repo: : https://github.com/alessandromarcellini/CargoService
 </a>
