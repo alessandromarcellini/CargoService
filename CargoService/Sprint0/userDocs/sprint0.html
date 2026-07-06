@@ -282,12 +282,12 @@ div.imagedesc{
 <h2>Requirement analysis</h2>
 <div class="remark">
 <ul>
-	<li> CONTAINER: A container is a rectangular box, with a barcode label.
+	<li> <span style="font-weight: bold;">CONTAINER</span>: A container is a rectangular box, with a barcode label.
 					It is modelled as a Plain Java Object (POJO) with the following attributes:
 					<ul>
-						<li> barcode: a numeric string that uniquely identifies the container</li>
-						<li> length (LC): a integer value that represents the length of the container</li>
-						<li> width (WC): a integer value that represents the width of the container</li>
+						<li> barcode: a numeric string that uniquely identifies the container;</li>
+						<li> length (LC): a integer value that represents the length of the container;</li>
+						<li> width (WC): a integer value that represents the width of the container.</li>
 					</ul>
 					<br>
 	<pre>
@@ -300,7 +300,7 @@ div.imagedesc{
 	</li>
 
 	<br>
-	<li> SLOT: A slot is a rectangular area, with the same length (LC) and width (WC) dimensions of a container, and can be occupied by a container.
+	<li> <span style="font-weight: bold;">SLOT</span>: A slot is a rectangular area, with the same length (LC) and width (WC) dimensions of a container, and can be occupied by a container.
 			It is modeled as a Plain Java Object (POJO) with the following attributes:
 			<ul>
 				<li> id: a number from 0 to 5 that uniquely identifies the slot
@@ -311,27 +311,33 @@ div.imagedesc{
 				<li> content: a reference to the container currently occupying the slot, or null if the slot is empty</li>
 			</ul>
 			<br>
+			<span style="font-weight: bold;">Note:</span> ISlot is an extension of the more generic ICell. This is made to facilitate the representation of the hold (next formalized element in the document).
 	<pre>
-	public interface ISlot {
-		public int getId();
+	
+	public interface ICell {
 		public IContainer getContent();
 		public void setContent(IContainer container);
+	}
+	
+
+	public interface ISlot extends ICell {
+		public int getId();
 	}
 	</pre>
 	</li>
 
 	<br>
-	<li> STATE OF THE HOLD: The state of the hold describes the current state of the hold, and it is shown on the display of the IOPort.
+	<li> <span style="font-weight: bold;">STATE OF THE HOLD</span>: The state of the hold describes the current state of the hold, and it is shown on the display of the IOPort.
 		 It is modeled as an enumerative type with the following values:
 			<ul>
-				<li> OUT_OF_SERVICE: the hold is out of service</li>
-				<li> ENGAGED: the hold is engaged in a load operation</li>
-				<li> DISENGAGED: the hold is disengaged from a load operation</li>
+				<li> OUT_OF_SERVICE: the hold is out of service;</li>
+				<li> ENGAGED: the hold is engaged in a load operation;</li>
+				<li> DISENGAGED: the hold is disengaged from a load operation.</li>
 			</ul>
 	</li>
 
 	<br>
-	<li> HOLD: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to store containers and one slot reserved to temporarily storage.		
+	<li> <span style="font-weight: bold;">HOLD</span>: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to store containers and one slot reserved to temporarily storage.		
 		The Hold can be modeled as Plain Java Object (POJO) with the following attributes:
 		<ul>
 			<li>a logical grid of cells of size LC x WC, where each of one, identified by a pair of coordinates (i,j), is a slot</li>
@@ -341,32 +347,78 @@ div.imagedesc{
 	
 	<pre>
 	public interface IHold {
-		public ISlot getSlot(int id);
-		public ISlot[][] getHold();
+		public ICell getCell(int id);
+		public ICell[][] getHold();
 		public HoldState getState();
 		public void setState(HoldState state);
-		public void setSlot(int id, ISlot slot);
+		public void setCell(int id, ICell cell);
 	}
 	</pre>
 	</li>
-	<li> CARGOROBOT: The cargorobot is a differential drive robot, that can move containers from one slot to another slot of the hold.<br>
+	<li> <span style="font-weight: bold;">CARGOROBOT</span>: The cargorobot is a differential drive robot, that can move containers across the hold.<br>
 	<br>
-	The DDR is a robot that can move forward, backward, rotate, and stop. Obviously, these actions are meant as commands, but we need to be more specific.<br>
+	After speaking with the client it came clear that the implementation of the ddr is provided directly by him and doesn't need to be tweaked in any way.
 	<br>
-	– Question to the client: is the software representing the DDR already available, or do we have to build it ourselves?<br>
-	– Answer: The VirtualRobot26 simulator is available, which defines a set of basic commands for the robot in CRIL. This simulator is presented as a service.<br>
-	<br>
-	The DDR problem (for the problem analyst)<br>
-	It is necessary to examine whether the service provided:<br>
-	– is sufficient to solve the problem<br>
-	– is suitable for direct use at the code level<br>
+	The DDR is a robot that can move forward, backward, rotate, and stop. Obviously, these actions are meant as commands. <br><br>
+	This is the representation of the robot provided by the client can be found <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">here</a>
+
+	<pre>
+
+
+	</pre>
+	
 	
 	</li>	</li>
 	<br>
 
+	<li> <span style="font-weight: bold;">SONAR</span>:
+
+
+		<pre>
+
+Dispatch containerPositioned : containerPositioned(X, Y)
+Event outOfService : outOfService()
+
+
+QActor sonar context ctxCargoService {
+	[#
+		var DFREE = 3;
+
+		var XSonar = 2;
+		var YSonar = 0;
+		
+	#]
+	State waiting initial {
+		println("[SONAR] ready!") color yellow
+	}
+	Transition t0 whenMsg containerPositioned -> checkMeasurement
+
+	State checkMeasurement {
+		// controlli se è > DFree => Goto countSeconds
+		// se è < Goto waiting
+	}
+	Transition ???????
+
+	State countSeconds {
+		println("[SONAR] waiting for replacement!") color magenta
+	}
+	Transition t1
+		whenMsg containerPositioned -> checkMeasurement
+		WhenTime 3000 -> measureExceeded
+
+	State measureExceeded {
+		println("[SONAR] measure exceeded!") color magenta
+		
+	}
+}
+		</pre>
+
+	</li>
+
 	<li> PUSH BUTTON:
 
 	</li>
+
 	<br>
 
 
