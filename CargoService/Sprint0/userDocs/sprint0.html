@@ -196,6 +196,47 @@ div.imagedesc{
 	margin: auto;
 }
 
+ 
+    svg{
+        background:white;
+        border:1px solid #888;
+    }
+ 
+    .room{
+        fill:#eef8d5;
+        stroke:#3d6b2f;
+        stroke-width:3;
+    }
+ 
+    .axis{
+        stroke:black;
+        stroke-width:2;
+        marker-end:url(#arrow);
+    }
+ 
+    .grid{
+        stroke:#ddd;
+        stroke-width:1;
+    }
+ 
+    .slot{
+        fill:#6f8f56;
+        stroke:#355226;
+        stroke-width:2;
+    }
+ 
+    .label{
+        font-size:14px;
+        font-weight:bold;
+    }
+ 
+    .device{
+        fill:#ffe59e;
+        stroke:#d89000;
+        stroke-width:2;
+        rx:6;
+	}
+
 
 </style>
     
@@ -344,7 +385,121 @@ div.imagedesc{
 			<li> state of the hold</li>
 		</ul>
 		<br>
+
+
+	<svg width="900" height="650">
 	
+		<defs>
+	<marker id="arrow" markerWidth="10" markerHeight="10"
+					refX="8" refY="3" orient="auto">
+	<polygon points="0 0, 8 3, 0 6"/>
+	</marker>
+	</defs>
+	
+		<!-- Griglia -->
+	<g>
+	<!-- verticali -->
+	<line class="grid" x1="50" y1="50" x2="50" y2="600"/>
+	<line class="grid" x1="100" y1="50" x2="100" y2="600"/>
+	<line class="grid" x1="150" y1="50" x2="150" y2="600"/>
+	<line class="grid" x1="200" y1="50" x2="200" y2="600"/>
+	<line class="grid" x1="250" y1="50" x2="250" y2="600"/>
+	<line class="grid" x1="300" y1="50" x2="300" y2="600"/>
+	<line class="grid" x1="350" y1="50" x2="350" y2="600"/>
+	<line class="grid" x1="400" y1="50" x2="400" y2="600"/>
+	<line class="grid" x1="450" y1="50" x2="450" y2="600"/>
+	<line class="grid" x1="500" y1="50" x2="500" y2="600"/>
+	<line class="grid" x1="550" y1="50" x2="550" y2="600"/>
+	<line class="grid" x1="600" y1="50" x2="600" y2="600"/>
+	<line class="grid" x1="650" y1="50" x2="650" y2="600"/>
+	<line class="grid" x1="700" y1="50" x2="700" y2="600"/>
+	
+			<!-- orizzontali -->
+	<line class="grid" x1="50" y1="50" x2="700" y2="50"/>
+	<line class="grid" x1="50" y1="100" x2="700" y2="100"/>
+	<line class="grid" x1="50" y1="150" x2="700" y2="150"/>
+	<line class="grid" x1="50" y1="200" x2="700" y2="200"/>
+	<line class="grid" x1="50" y1="250" x2="700" y2="250"/>
+	<line class="grid" x1="50" y1="300" x2="700" y2="300"/>
+	<line class="grid" x1="50" y1="350" x2="700" y2="350"/>
+	<line class="grid" x1="50" y1="400" x2="700" y2="400"/>
+	<line class="grid" x1="50" y1="450" x2="700" y2="450"/>
+	<line class="grid" x1="50" y1="500" x2="700" y2="500"/>
+	<line class="grid" x1="50" y1="550" x2="700" y2="550"/>
+	<line class="grid" x1="50" y1="600" x2="700" y2="600"/>
+	</g>
+	
+		<!-- Assi -->
+	<line class="axis" x1="50" y1="50" x2="760" y2="50"/>
+	<line class="axis" x1="50" y1="50" x2="50" y2="620"/>
+	
+		<text x="770" y="55" font-size="18">X</text>
+	<text x="35" y="635" font-size="18">Y</text>
+	
+		<!-- Stanza -->
+	<rect class="room"
+			x="100"
+			y="100"
+			width="520"
+			height="380"/>
+	
+		<!-- HOME -->
+	<rect class="device"
+			x="105"
+			y="105"
+			width="60"
+			height="28"/>
+	<text class="label"
+			x="116"
+			y="124">HOME</text>
+	
+		<!-- SONAR -->
+	<rect class="device"
+			x="230"
+			y="105"
+			width="70"
+			height="28"/>
+	<text class="label"
+			x="243"
+			y="124">SONAR</text>
+	
+		<!-- IOPORT -->
+	<rect class="device"
+			x="110"
+			y="440"
+			width="80"
+			height="28"/>
+	<text class="label"
+			x="122"
+			y="459">IOPORT</text>
+	
+		<!-- SLOT1 -->
+	<rect class="slot"
+			x="220"
+			y="180"
+			width="45"
+			height="45"/>
+	<text x="210" y="175">SLOT1</text>
+
+		<!-- SLOT2 -->
+	<rect class="slot" x="350" y="180" width="45" height="45"/>
+	<text x="340" y="175">SLOT2</text>
+
+		<!-- SLOT3 -->
+	<rect class="slot" x="220" y="300" width="45" height="45"/>
+	<text x="210" y="295">SLOT3</text>
+
+		<!-- SLOT4 -->
+	<rect class="slot" x="350" y="300" width="45" height="45"/>
+	<text x="340" y="295">SLOT4</text>
+
+		<!-- SLOT5 -->
+	<rect class="slot" x="470" y="240" width="45" height="45"/>
+	<text x="460" y="235">SLOT5</text>
+
+	</svg>
+
+		<br>
 	<pre>
 	public interface IHold {
 		public ICell getCell(int id);
@@ -355,38 +510,35 @@ div.imagedesc{
 	}
 	</pre>
 	</li>
+
+	<br>
 	<li> <span style="font-weight: bold;">CARGOROBOT</span>: The cargorobot is a differential drive robot, that can move containers across the hold.<br>
 	<br>
 	After speaking with the client it came clear that the implementation of the ddr is provided directly by him and doesn't need to be tweaked in any way.
 	<br>
 	The DDR is a robot that can move forward, backward, rotate, and stop. Obviously, these actions are meant as commands. <br><br>
 	This is the representation of the robot provided by the client can be found <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">here</a>
+	</li>
 
-	<pre>
-
-
-	</pre>
-	
-	
-	</li>	</li>
 	<br>
-
 	<li> <span style="font-weight: bold;">SONAR</span>:
-
 
 		<pre>
 
-Dispatch containerPositioned : containerPositioned(X, Y)
-Event outOfService : outOfService()
+// The sonar cannot sense on its own. When the user engages the system and
+// places the container, cargoservice informs the sonar of its position (X,Y).
+// The sonar computes the distance D and decides:
+//   - D > DFREE sustained 3s => sonar failure => Out of service.
 
+Dispatch containerPositioned : containerPositioned(X, Y)
+Event    outOfService        : outOfService()
 
 QActor sonar context ctxCargoService {
 	[#
-		var DFREE = 3;
-
-		var XSonar = 2;
-		var YSonar = 0;
-		
+		val DFREE  = 3
+		val XSonar = 2
+		val YSonar = 0
+		var D      = 0
 	#]
 	State waiting initial {
 		println("[SONAR] ready!") color yellow
@@ -394,89 +546,110 @@ QActor sonar context ctxCargoService {
 	Transition t0 whenMsg containerPositioned -> checkMeasurement
 
 	State checkMeasurement {
-		// controlli se è > DFree => Goto countSeconds
-		// se è < Goto waiting
+		onMsg( containerPositioned : containerPositioned(X,Y) ){
+			[# D = Math.abs(payloadArg(0).toInteger()-XSonar)
+			     + Math.abs(payloadArg(1).toInteger()-YSonar) #]
+			println("[SONAR] distance = $D") color cyan
+		}
 	}
-	Transition ???????
+	Goto countSeconds if [# D > DFREE #] else waiting
 
 	State countSeconds {
-		println("[SONAR] waiting for replacement!") color magenta
+		println("[SONAR] distance too high, waiting 3s...") color magenta
 	}
 	Transition t1
 		whenMsg containerPositioned -> checkMeasurement
-		WhenTime 3000 -> measureExceeded
+		whenTime 3000               -> measureExceeded
 
 	State measureExceeded {
-		println("[SONAR] measure exceeded!") color magenta
-		
+		println("[SONAR] Out of service!") color red
+		emit outOfService : outOfService()
 	}
 }
 		</pre>
-
-	</li>
-
-	<li> PUSH BUTTON:
-
 	</li>
 
 	<br>
+	<li> <span style="font-weight: bold;">PUSH BUTTON</span>: An input device pressed by the customer to send a load request.
+	It is an <b>active</b> entity (an event source): a physical press is turned into a loadRequest that cargoservice reacts to, so it is modelled as a QActor.
+	<pre>
+Dispatch pressed     : pressed()       // raised by the hardware/GUI on a physical press
+Event    loadRequest : loadRequest()   // notified to cargoservice
+
+QActor pushbutton context ctxCargoService {
+	State idle initial {
+		println("[BUTTON] ready!") color yellow
+	}
+	Transition t0 whenMsg pressed -> notifyRequest
+
+	State notifyRequest {
+		emit loadRequest : loadRequest()
+	}
+	Transition t1 whenTime 10 -> idle
+}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">DISPLAY</span>: A <b>passive</b> output device that shows the current state of the hold and the text messages ('Service working', 'Out of service').
+	It is modelled as a POJO with an interface, injected into the business logic so the logic does not depend on a concrete display.
+	<pre>
+public interface IDisplay {
+	public void displayState(String msg);
+	public void displayBookedSlot(int id);
+}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">LED</span>: A <b>passive</b> output device. While the system is engaged it must blink for the customer window (~30s), then stop when the container is placed in the sensor area or the window expires.
+	Being passive, the LED does not own the timing: the 30s window is the same timeout that turns the engaged system into disengaged, owned by cargoservice, which starts and stops the blinking.
+	<pre>
+public interface ILed {
+	public void startBlinking();   // called by cargoservice when the system becomes engaged
+	public void stopBlinking();    // called on container placement or on the 30s timeout
+	public boolean isBlinking();
+}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">I/O PORT</span>: A <b>composite component </b> that groups the pushbutton, the display and the sonar into the single physical interface between the customer and cargoservice.
+	Its role as the system's single entry point.
+
+	<br>
+	<pre>
+public interface IIOPort {
+	public IDisplay getDisplay();
+	public ILed     getLed();
+	// the pushbutton and the sonar are active QActors, reached via messages
+}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">CARGOSERVICE</span>: The service to be built. It hosts the <b>business logic</b>: it receives the load request from the pushbutton, produces the answer (retrylater / reject / the name of the reserved slot), manages the engagement and the 30s window, drives the LED and the display, informs the sonar of the container position, and commands the cargorobot (IOPort &rarr; slot5 &rarr; reserved slot).
+	It has no passive data nature: it is an <b>active</b> entity whose lifecycle is a state machine. Its behaviour (states, transitions, timeouts) is <em>not</em> a requirement-analysis concern and is formalized in <b>Problem analysis</b>; here it is only named and its responsibilities delimited.
+	
 
 
-	<li> DISPLAY:
 
 	</li>
-	<br>
-
-	<li> LED:
-
-	</li>
-	<br>
-
-	<li> I/O PORT:
-
-	</li>
-	<br>
 
 </ul>
-
-
-
-
 </div>
- 
-
- 
-
-<h2>Problem analysis</h2>
 
 <h2>Test plans</h2>
+<div class="remark"></div>
+
+
+<h2>Goal Sprint 1</h2>
+<div class="remark">
 
 
 
-<h2>Project</h2> 
- 
- 
-
-<h2>Testing</h2> 
- 
-
-<h2>Deployment</h2> 
-
- 
-<h2>Maintenance</h2> 
- 
-<!-- USEFUL
-<table style="width:100%" border="1">
-<tr>
-<td style="width:50%">
-</td>
-<td></td>
-</tr>
-</table>
--->
-	      	
-<br/><br/> 	
-</div>  
+<br/><br/>
+</div>
 
 <div style="background-color:rgba(86, 56, 253, 0.9); width:100%;text-align:left;color:white">
 By Marcellini Alessandro email: alessandr.marcellin2@studio.unibo.it, 
@@ -485,8 +658,8 @@ By Marcellini Alessandro email: alessandr.marcellin2@studio.unibo.it,
 And Villani Alessandro email: alessandro.villani4@studio.unibo.it,
 <img src="./img/alessandro_villani.jpg" alt="emiglio" width="8%" height="8%">
 <br><br>
-<a href="https://github.com/alessandromarcellini/CargoService" target="_blank">GIT repo: : https://github.com/alessandromarcellini/CargoService
+<a href="https://github.com/alessandromarcellini/CargoService" style="color:white" target="_blank">GIT repo: : https://github.com/alessandromarcellini/CargoService
 </a>
-</div> 
+</div>
 </body>
 </html>
