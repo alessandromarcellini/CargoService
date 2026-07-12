@@ -6,9 +6,9 @@ reply( load_accepted, load_accepted(SLOTID) ).  %%for load_request
 reply( load_retrylater, load_retrylater(HOLDSTATE) ).  %%for load_request
 reply( load_refused, load_refused(none) ).  %%for load_request
 dispatch( start_working, start_working(SlotToFill) ).
+dispatch( checkMeasurement, checkMeasurement(none) ).
 event( outOfService, outOfService(none) ).
 event( containerPositioned, containerPositioned(none) ).
-event( checkMeasurement, checkMeasurement(none) ).
 %====================================================================================
 context(ctxcargoservice, "localhost",  "TCP", "8020").
 context(ctxioport, "localhost",  "TCP", "8021").

@@ -6,12 +6,6 @@ System cargoservice
 
 
 
-// The sonar cannot sense on its own. When the user engages the system and
-// places the container, cargoservice informs the sonar of its position (X,Y).
-// The sonar computes the distance D and decides:
-//   - D > DFREE sustained 3s => sonar failure => Out of service.
-
-
 // request for cargoservice
 Request load_request : load_request(none)
 
@@ -22,11 +16,10 @@ Reply load_refused    : load_refused(none)    for load_request
 
 // message for robotservice to start working to move the container
 Dispatch start_working : start_working(SlotToFill)
+Dispatch checkMeasurement : checkMeasurement(none)
 
 Event    outOfService : outOfService(none)
 Event	 containerPositioned : containerPositioned(none)
-
-Event 	 checkMeasurement : checkMeasurement(none)
 
 
 Context ctxcargoservice ip [host="localhost" port=8020]
@@ -73,6 +66,7 @@ QActor cargoservice context ctxcargoservice {
     		replyTo load_request with load_accepted : load_accepted(intSlotToFill)
     		
     		delay 5000 // simulating sonar signal reception, just for requirements analysis purposes
+    		forward sonar -m checkMeasurement : checkMeasurement(none)
     		// in the real case it will wait for the event "containerPositioned"
     		
     		// if the event received is "outOfService" then switch the hold state to "Out of service"
@@ -134,10 +128,10 @@ QActor sonar context ctxdevices {
 		println("[SONAR] ready!") color yellow
 	}
 	Transition t0
-		whenEvent checkMeasurement -> checkMeasurement
+		whenMsg checkMeasurement -> measureDistance
 
 	
-	State checkMeasurement {
+	State measureDistance {
 		println("[SONAR] measuring distance...") color yellow
 		[# CurrD = Random.nextInt(0, 6) #]
 		if [# currD > DFREE #] {
