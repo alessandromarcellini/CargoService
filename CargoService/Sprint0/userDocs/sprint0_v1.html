@@ -734,11 +734,13 @@ div.imagedesc{
 		#]
 		
 		State s0 initial {
-			
+
 			// simulating load request from push button
-			delay 10000
-			request cargoservice -m load_request : load_request(none)
-			
+			// disabled in Sprint 0: the test client is the only actor that drives
+			// cargoservice, so that TP0.1 is not raced by a spontaneous ioport request
+			// delay 10000
+			// request cargoservice -m load_request : load_request(none)
+
 		}
 		Goto work
 
@@ -912,7 +914,156 @@ div.imagedesc{
 </div>
 
 <h2>Test plans</h2>
-<div class="remark"></div>
+<div class="remark">
+
+	The Sprint 0 requirements describe only the behaviour that cargoservice must expose in
+	response to a load request, without saying anything about how its collaborators or its
+	internal logic are implemented. The test plan is therefore limited to the functional cases
+	that can be deduced directly from the requirements and that are already captured in our
+	model: the three possible answers to a load request, that is <b>load_accepted</b>,
+	<b>load_refused</b> and <b>load_retrylater</b>.
+	<br><br>
+
+	To run a case automatically we need to bring the system into a known starting condition and
+	then read the answer it produces. Reading the answer is straightforward, because it travels
+	back on the same request/reply channel that a test client can open towards cargoservice.
+	Preparing the starting condition is not always possible in this sprint: the state of the hold
+	(its occupancy and whether it is disengaged, engaged or out of service) lives inside
+	cargoservice and cannot yet be set from the outside. For this reason only the case whose
+	starting condition coincides with the natural startup state of the system, an empty hold with
+	the hold disengaged, can be checked automatically now. The other two cases are described here
+	as well, but their automation is postponed to Sprint 1, when cargoservice will be made
+	<b>observable</b> and its state controllable from a test.
+	<br><br>
+
+	All tests use cargoservice as the component under test, reachable on its context
+	ctxcargoservice at host localhost and port 8020. The test client plays the role of the IOPort
+	and sends the request load_request(none), then reads the reply.
+	<br><br>
+
+	<ol>
+		<li>
+			<b>Load accepted on an empty hold.</b>
+			With cargoservice started, the hold empty and its state disengaged, the test sends a
+			single load_request. The expected answer is load_accepted carrying the identifier of a
+			reserved slot, whose value must be one of the four storage slots (1 to 4). No further
+			answer must be produced for the same request. This is the only case automated in
+			Sprint 0; the corresponding code is available in the file
+			<a href="../test/it/unibo/test/TestPlanSprint0.kt">TestPlanSprint0.kt</a>.
+		</li>
+		<br>
+		<li>
+			<b>Load refused when the hold is full.</b>
+			With the hold disengaged but all four slots already occupied, so that no free slot is
+			available, the test sends a load_request. The expected answer is load_refused, and the
+			state of the hold must remain disengaged. This case is postponed to Sprint 1, because it
+			requires the ability to preset a full hold from the test.
+		</li>
+		<br>
+		<li>
+			<b>Retry later when the system is busy.</b>
+			With the hold engaged because a previous request is still being served, and with at least
+			one free slot, the test sends a second load_request. The expected answer is
+			load_retrylater reporting the engaged state. This case is also postponed to Sprint 1, as
+			it needs both a preset hold state and a controllable engagement window.
+		</li>
+	</ol>
+
+	<br>
+	Writing the first case as "exactly one answer" also serves to reveal a defect in the current
+	handle_load_request logic: its three cases are written as separate, sequential checks rather
+	than as mutually exclusive alternatives, so after replying with load_retrylater the execution
+	continues into the next check and a single request may produce a second answer. The correction,
+	using mutually exclusive branches, is scheduled for Sprint 1.
+
+	<br><br>
+	<b>Automated test source (TP0.1).</b> The code below is the JUnit test that plays the role of the
+	IOPort boundary: it opens a TCP client towards ctxcargoservice on localhost:8020, sends the
+	modelled load_request(none), and asserts the specific reply. It is deliberately written so that
+	a wrong branch (load_refused / load_retrylater) turns the test red.
+	<pre>
+package it.unibo.test
+
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import unibo.basicomm23.interfaces.Interaction
+import unibo.basicomm23.tcp.TcpClientSupport
+import unibo.basicomm23.utils.CommUtils
+
+class TestPlanSprint0 {
+
+    private val HOST = "localhost"
+    private val PORT = 8020            // ctxcargoservice, from cargoservice_sprint0.qak
+    private var conn: Interaction? = null
+
+    @Before
+    fun setup() {
+        CommUtils.outcyan("Connecting to cargoservice ($HOST:$PORT)")
+        try {
+            conn = TcpClientSupport.connect(HOST, PORT, 10)
+        } catch (e: Exception) {
+            fail("TCP connection error: make sure the cargoservice server is running on $HOST:$PORT. ${e.message}")
+        }
+    }
+
+    @After
+    fun teardown() {
+        conn?.close()
+        CommUtils.outcyan("Connection closed")
+    }
+
+    // TP0.1 - happy path. Asserts the SPECIFIC expected reply, not merely
+    // "one of the three replies", so a wrong branch turns the test red.
+    @Test
+    fun testLoadAcceptedOnEmptyHold() {
+        CommUtils.outmagenta("TP0.1: send load_request on an empty hold, expect load_accepted(slot 1..4)")
+        try {
+            // request envelope built from the model:
+            // msg(msgId, msgType, sender, receiver, content, seqNumber)
+            val requestMsg =
+                "msg(load_request,request,testunit,cargoservice,load_request(none),1)"
+
+            val reply = conn!!.request(requestMsg)
+            CommUtils.outgreen("Reply from cargoservice: $reply")
+            assertNotNull("No reply received from cargoservice", reply)
+
+            val body = reply.toString()
+
+            // Then: must be a load_accepted, and NOT a refused/retrylater
+            assertTrue(
+                "Expected load_accepted but got: $body",
+                body.contains("load_accepted")
+            )
+            assertTrue(
+                "Unexpected extra/other reply mixed in: $body",
+                !body.contains("load_refused") &amp;&amp; !body.contains("load_retrylater")
+            )
+
+            // And the reserved slot id must be one of the four storage slots 1..4
+            val slotId = extractSlotId(body)
+            assertNotNull("Could not read the reserved slot id from: $body", slotId)
+            assertTrue(
+                "Reserved slot id out of range (expected 1..4), got: $slotId",
+                slotId!! in 1..4
+            )
+        } catch (e: Exception) {
+            fail("Test failed during execution: ${e.message}")
+        }
+    }
+
+    // Extracts the integer argument of load_accepted(&lt;id&gt;) from the reply text.
+    private fun extractSlotId(reply: String): Int? {
+        val m = Regex("""load_accepted\(\s*(\d+)\s*\)""").find(reply) ?: return null
+        return m.groupValues[1].toIntOrNull()
+    }
+}
+	</pre>
+
+</div>
 
 
 <h2>Goal Sprint 1</h2>

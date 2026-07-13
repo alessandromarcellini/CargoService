@@ -4,8 +4,6 @@ System cargoservice
 	//Alessandro Marcellini
 	//Alessandro Villani
 
-
-
 // request for cargoservice
 Request load_request : load_request(none)
 
@@ -160,19 +158,22 @@ QActor ioport context ctxioport {
 	#]
 	
 	State s0 initial {
-		
+
 		// simulating load request from push button
-		delay 10000
-		request cargoservice -m load_request : load_request(none)
-		
+		// disabled in Sprint 0: the test client is the only actor that drives
+		// cargoservice, so that TP0.1 is not raced by a spontaneous ioport request
+		//delay 10000
+		//request cargoservice -m load_request : load_request(none)
+
 	}
-	Goto work
+	//
 
 
 	State work {
 		println("[IOPORT] customer pressed pushbutton")
-		request cargoservice -m load_request : load_request(none)
+		//request cargoservice -m load_request : load_request(none)
 	}
+	
 	Transition t0
 		whenReply load_accepted -> accepted
 		whenReply load_retrylater -> retrylater

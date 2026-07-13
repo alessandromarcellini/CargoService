@@ -100,8 +100,22 @@ dependencies {
     implementation name: 'uniboInterfaces'
     implementation name: '2p301'
 	implementation name: 'unibo.qakactor23-5.0'
-    implementation name: 'unibo.basicomm23-1.0' 
+    implementation name: 'unibo.basicomm23-1.0'
 }
+
+// The Sprint 0 test sources live in the top-level 'test' folder (not the
+// Gradle default 'src/test/kotlin'), so make the test source set point there,
+// otherwise './gradlew test' compiles nothing and passes vacuously.
+sourceSets {
+    test {
+        kotlin { srcDirs = ['test'] }
+    }
+}
+// TestPlanSprint0 uses JUnit 4 (@Before/@Test/@After from kotlin-test-junit).
+test {
+    useJUnit()
+}
+
 /*	//To reproduce gradle dir structure: no more
 sourceSets {
     main {

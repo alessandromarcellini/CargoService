@@ -62,8 +62,22 @@ public class Hold implements IHold {
 	
 	
 	public ISlot nextFreeSlot() {
-		// TODO
-		return new Slot(0);
+		// Returns the first storage slot (id 1..4) that is currently free
+		// (no container placed), or null if all four are occupied.
+		// Slot 5 is temporary marking storage, not a reservable destination,
+		// so it is excluded on purpose.
+		for (int i = 0; i < hold.length; i++) {
+			for (int j = 0; j < hold[i].length; j++) {
+				ICell cell = hold[i][j];
+				if (cell instanceof ISlot) {
+					ISlot slot = (ISlot) cell;
+					if (slot.getId() >= 1 && slot.getId() <= 4 && slot.getContent() == null) {
+						return slot;
+					}
+				}
+			}
+		}
+		return null;
 	}
 	
 }
