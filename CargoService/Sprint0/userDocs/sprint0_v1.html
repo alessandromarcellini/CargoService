@@ -327,27 +327,66 @@ div.imagedesc{
 <h3>The nature of the system</h3>
 	Before modelling the single entities, it is worth reflecting on the nature of the system that the requirements imply.
 	<br><br>
-	Is the software concentrated or distributed? It cannot be a single, concentrated program. The requirements describe parts that live and act independently: the IOPort devices (pushbutton, display, LED), the sonar, the business logic of cargoservice, and the robot. These parts do not share memory; they cooperate by exchanging messages, some of them across a network. The system is therefore inherently distributed.
+	Is the software concentrated or distributed? It cannot be a single, concentrated program. The requirements describe parts that live and act independently: the IOPort devices (pushbutton, display, LED), the sonar, the business logic of cargoservice, and the robot. These parts do not share memory; they need to cooperate, possibly across the network, operating on different nodes. The system is therefore inherently distributed.
 	<br><br>
-	Is the software heterogeneous? Yes. The parts differ in nature and technology: the robot is a web-based simulator (VirtualRobot) reached over network protocols; the sonar is hosted on a small microcontroller-class device; the IOPort devices are simple input/output units; and cargoservice is the coordinating business logic. Different languages, protocols and execution environments must coexist and interoperate.
+	Is the software heterogeneous? Yes. The parts that need to be developed are really different both in characteristics and in the way they need to be hosted, therefore different languages, protocols and execution environments must coexist and interoperate.
 	<br><br>
-	How many nodes are needed to deploy it? A first, rough estimate, to be refined in design, is at least one node for the VirtualRobot simulator, one for the robot service that fronts it, and one for the cargoservice logic together with the IOPort devices it governs. So the system spans several nodes, not one. The exact deployment is a design decision and is deferred.
+	How many nodes are needed to deploy it? A first, rough estimate, to be refined in design, is at least 3 nodes:
+		<ol>
+			<li>Pico W: the node on which the sonar and the LED will be physically placed and their business logic will run;</li>
+			<li>IO Port: the node on which the IO Port web-gui and logic will run;</li>
+			<li>CargoService: the node that will actually implement the logic of the robot, the logic to control it and the logic to make it do move containers as the client intended it to.</li>
+		</ol>
 <br><br><br>
 
 
-<h3>Why we use qak</h3>
-	Java, born as a general-purpose programming language, lacks the expressive power to state the concepts of distributed systems (actors, services, messages, interconnections) directly: expressing them in plain Java would require large amounts of boilerplate code. Our software house has therefore developed, in-house, a modelling language designed for this purpose, qak, which lets us express these concepts in a simple, compact and expressive way, turning them into first-class entities of the language.
-	<br>
+<h3>Why qak</h3>
+		As we said the project needs to be distributed, heterogeneous and lots of different components need to cooperate as Actors, services, pojos or normal variables. <br>
+	Java is not built for the purpose of representing these kind of elements, it was born as a general-purpose programming language and, so, it lacks the expressive power to state the concepts of distributed systems (actors, services, messages, interconnections) directly: expressing them in plain Java would require large amounts of boilerplate code that would pollute the representation of the elements. <br> <br>
+	Fortunately, our software house, has already developed in-house a modelling language designed for this purpose, QAK, which lets us express these concepts in a simple, compact and expressive way, turning them into first-class entities of the language.
+	<br> <br></br>
 	In short, how qak works: it is a modelling language built around QActors. The "Q" stands for "quasi", because the actor is the reference paradigm but the same construct can also play other roles (a nano-service inside a single JVM, a microservice over TCP or MQTT, a CoAP resource). Each QActor is modelled as a Moore finite-state machine: its outputs depend on its current state, and its transitions can be driven both by autonomous internal decisions and by the arrival of messages. QActors interact only by exchanging messages. Underneath, qak is realized on top of Kotlin, the "k" in qak, with each QActor running as a Kotlin coroutine.
 
 <br><br><br>
 
 
+<h3>Formalization of Messages and interactions of the components inside the system:</h3>
+
+<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+<pre>
+System cargoservice
+// QAK requirements analysis
+// Made by:
+	//Alessandro Marcellini
+	//Alessandro Villani
+
+// request for cargoservice
+Request load_request : load_request(none)
+
+// reply to ioport
+Reply load_accepted   : load_accepted(SLOTID) for load_request
+Reply load_retrylater : load_retrylater(HOLDSTATE) for load_request
+Reply load_refused    : load_refused(none)    for load_request
+
+// message for robotservice to start working to move the container
+Dispatch start_working : start_working(SlotToFill)
+Dispatch checkMeasurement : checkMeasurement(none)
+
+Event    outOfService : outOfService(none)
+Event	 containerPositioned : containerPositioned(none)
+
+
+Context ctxcargoservice ip [host="localhost" port=8020]
+Context ctxioport       ip [host="localhost" port=8021]
+Context ctxrobot        ip [host="localhost" port=8022]
+Context ctxdevices      ip [host="localhost" port=8023]
+</pre>
+
 <h3>Formalization of Macro-components</h3>
 <br>
 <ul>
 	<li> <span style="font-weight: bold;">CONTAINER</span>: A container is a rectangular box, with a barcode label.
-					It is modelled as a Plain Java Object (POJO) with the following attributes:
+					We could model it as a Plain Object (POJO) with the following attributes:
 					<ul>
 						<li> barcode: a numeric string that uniquely identifies the container;</li>
 						<li> length (LC): a integer value that represents the length of the container;</li>
@@ -369,8 +408,11 @@ div.imagedesc{
         </ol>
     </p>
 
+	<p><b>Note:</b> we could avoid representing the container as its features are not really important for the implementation of the system. For representation purposes and for completeness of the analysis of the requirements only we still represent and formalize what a container is in our system.</p>
+
 
     <br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
 	public interface IContainer {
 		public String getBarcode();
@@ -404,25 +446,26 @@ div.imagedesc{
         <br>
         <strong>Answers from Client:</strong>
         <ol>
-            <li>The functioning of the marker device can be modelled as a delay of a certain interval, during the request service.</li>
+            <li>The functioning of the marker device can be emulated by a standard delay of 5 seconds in the container movement logic.</li>
         </ol>
     </p>
     
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
     
-    public enum CellType {
+public enum CellType {
 	FREE, OBSTACLE, HOME, IOPORT, SLOT
-	}
-	
-	public interface ICell {
-		public CellType getType(); // gets the type of the cell
-    }
+}
 
-    public interface ISlot extends ICell {
-        public int getId(); // from 1 to 5
-        public IContainer getContent();
-        public void setContent(IContainer container);
-    }
+public interface ICell {
+	public CellType getType(); // gets the type of the cell
+}
+
+public interface ISlot extends ICell {
+	public int getId(); // from 1 to 5
+	public IContainer getContent();
+	public void setContent(IContainer container);
+}
 
 	</pre>
 	</li>
@@ -436,21 +479,22 @@ div.imagedesc{
 				<li> DISENGAGED: the hold is disengaged from a load operation.</li>
 			</ul>
 			<br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
-	public enum HoldState {
+public enum HoldState {
 	ENGAGED, DISENGAGED, OUT_OF_SERVICE
-	}
+}
 
 	</pre>
 	
 	</li>
 
 	<br>
-	<li> <span style="font-weight: bold;">HOLD</span>: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to store containers and one slot reserved to temporarily storage.		
+	<li> <span style="font-weight: bold;">HOLD</span>: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to permanently store containers and one slot reserved for temporary storage until the marker device has done its job. <br> <br>		
 		The Hold can be modeled as Plain Java Object (POJO) with the following attributes:
 		<ul>
-			<li>a logical grid of cells of size LC x WC, where each of one, identified by a pair of coordinates (i,j), is a slot</li>
-			<li> state of the hold</li>
+			<li>a logical grid of cells of size LC x WC, where each one of them is a Cell or a Slot identified by a pair of coordinates (i,j);</li>
+			<li> state of the hold.</li>
 		</ul>
 		<br>
 
@@ -570,15 +614,55 @@ div.imagedesc{
 	<br>
 	<br>
 
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
-	public interface IHold {
-		public ICell[][] getHold();
-		public ICell getCell(int i, int j);
-		public HoldState getState();
-		public void setState(HoldState state);
-		public void setCell(int i, int j, ICell cell);
-		public ISlot nextFreeSlot(); // if returns null, all slots are taken
+public interface IHold {
+	public ICell[][] getHold();
+	public ICell getCell(int i, int j);
+	public HoldState getState();
+	public void setState(HoldState state);
+	public void setCell(int i, int j, ICell cell);
+	public ISlot nextFreeSlot(); // if returns null, all slots are taken
+}
+
+
+
+public class Hold implements IHold {
+	
+	private ICell[][] hold = new ICell[7][7];
+	private HoldState currentState = HoldState.DISENGAGED;
+
+	public Hold() {
+
+	    for (int i = 0; i < 7; i++) {
+	        for (int j = 0; j < 7; j++) {
+	            hold[i][j] = new Cell(CellType.FREE);
+	        }
+	    }
+
+	    // HOME
+	    hold[0][0] = new Cell(CellType.HOME);
+
+	    // SLOT
+	    hold[2][1] = new Slot(1);
+	    hold[5][1] = new Slot(2);
+	    hold[2][3] = new Slot(3);
+	    hold[5][3] = new Slot(4);
+	    hold[6][2] = new Slot(5);
+
+	    // OSTACOLI
+	    hold[3][1] = new Cell(CellType.OBSTACLE);
+	    hold[4][1] = new Cell(CellType.OBSTACLE);
+	    hold[3][3] = new Cell(CellType.OBSTACLE);
+	    hold[4][3] = new Cell(CellType.OBSTACLE);
+	    hold[5][2] = new Cell(CellType.OBSTACLE);
+
+	    // IOPORT
+	    hold[1][6] = new Cell(CellType.IOPORT);
 	}
+
+	// ... implement the methods of the IHold 
+}
 	</pre>
 	</li>
 
@@ -586,9 +670,12 @@ div.imagedesc{
 
 	<li> <span style="font-weight: bold;">CARGOROBOT</span>: The cargorobot is a differential drive robot (DDR) that can move containers across the hold. It can move forward, backward, rotate, and stop; these actions are meant as commands.
 	<br><br>
-	It is provided directly by the committente, not built by us. What follows is a simplified representation of its role in the system, enough to fix how cargoservice interacts with the robot, without committing here to a concrete implementation.
+	It is provided directly by the client, and therefore will not be built from scratch by us.
+		The actual implementations of the robot and the robotservice provided by the client will be throughly discussed and analyized in order to establish what implementation is the best for our needs and if it needs to be slightly modifed in the problem analysis. <br>
+	<br>What follows is a simplified representation of its role in the system, enough to fix how cargoservice interacts with the robot, without committing here to a concrete implementation. <br>
 	<br><br>
-	The robot is not controlled directly. It is simulated by VirtualRobot (the WEnv environment), a distributed service that is the only component actually actuating the DDR. Access to it is layered:
+	The robot is not controlled directly. It is simulated by a distributed service that is the only component actually actuating the DDR. <br>
+	The access to it is layered:
 	<ul>
 		<li>VirtualRobot (WEnv): the simulator; it receives concrete movement commands (cril) over HTTP (synchronous) and WebSocket (asynchronous), and streams back the robot/sensor state.</li>
 		<li>RobotObj: a Java object that hides the network, translating method calls into cril commands sent to VirtualRobot.</li>
@@ -596,13 +683,17 @@ div.imagedesc{
 	</ul>
 
 	<strong>Note:</strong><br>
-	In our system, <span style="font-weight: bold;">cargoservice</span> communicates only with robotservice26, by exchanging messages: it never talks to VirtualRobot over the network directly. It reuses the robotservice26 service provided by the committente and sees the robot purely as a message-driven service, sending the movement requests needed to carry a container (IOPort -> slot5 -> reserved slot) and, if needed, subscribing to the robot's streamed state.
+	In our system, <span style="font-weight: bold;">cargoservice</span> communicates only with robotservice, by exchanging messages: it never talks to the actual robot over the network directly. It reuses the robotservice service provided by the client and sees the robot purely as a message-driven service, sending the movement requests needed to carry a container (IOPort -> slot5 -> reserved slot) and, if needed, subscribing to the robot's streamed state.
 	<br><br>
 	The committente actually supplies more than one way to drive the robot (the RobotObj Java object directly, or the robotservice26 actor service, both on top of the VirtualRobot simulator). Choosing the most suitable one, deciding whether it must be adapted for this project, and deciding whether cargoservice should depend on robotservice26 directly or through an abstraction, are design concerns: they are deferred to the next sprint, in the Problem analysis.
 	<br>
 	Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">Protobook — ROBOTSERVICE26</a>.
 	<br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
+	
+	Dispatch start_working : start_working(SlotToFill)
+	
 	QActor robotservice context ctxrobot {
 		State s0 initial {
 			println("[ROBOT SERVICE] initialized") color magenta
@@ -639,6 +730,7 @@ div.imagedesc{
 	<br>
 	<li> <span style="font-weight: bold;">SONAR</span>:
 
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
 
 	// The sonar cannot sense on its own. When the user engages the system and
@@ -690,13 +782,49 @@ div.imagedesc{
 	</li>
 
 	<br>
-	<li> <span style="font-weight: bold;">PUSH BUTTON</span>: An input device, inside the I/O PORT, pressed by the customer to send a load request.
-	It is an <b>active</b> entity (an event source): a physical press is turned into a loadRequest that cargoservice reacts to, so it is modelled as a QActor.
-	</li>
 
 	<br>
-	<li> <span style="font-weight: bold;">DISPLAY</span>: A <b>passive</b> output device that shows the current state of the hold and the text messages ('Service working', 'Out of service').
+
+	<li> <span style="font-weight: bold;">I/O PORT</span>: A <b>composite component </b> that groups the pushbutton, the display and the sonar into the single web-gui interface between the customer and cargoservice.
+	It is the system's entry point for the client to interact with the system.
+
+	<br><br>
+
+	<span style="font-weight: bold;">PUSH BUTTON</span>: An input device, inside the I/O PORT, that can be pressed by the customer to send a load request to the system.
+	It is an <b>active</b> entity (an event source): a physical press is turned into a loadRequest that cargoservice reacts to.
+
+
+<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+<pre><code>
+&lt;button id="pushButton"&gt;
+    Load Request
+&lt;/button&gt;
+
+&lt;script&gt;
+document.getElementById("pushButton").addEventListener("click", function () {
+
+    // Generate the loadRequest message
+    const message = {
+        type: "loadRequest"
+    };
+
+    sendToSystem(message);
+});
+
+function sendToSystem(message) {
+    console.log("Message sent to CargoService:", message);
+
+    // Abstract representation of the communication
+    // websocket.send(JSON.stringify(message));
+}
+&lt;/script&gt;
+</code></pre>
+
+	<br>
+	<br>
+	<span style="font-weight: bold;">DISPLAY</span>: A <b>passive</b> output device that shows the current state of the hold and the text messages ('Service working', 'Out of service').
 	It is modelled as a POJO with an interface, injected into the business logic so the logic does not depend on a concrete display.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
 	public interface IDisplay {
 		public void setState(String msg);
@@ -707,13 +835,10 @@ div.imagedesc{
 
 	}
 	</pre>
-	</li>
-	<br>
-
-	<li> <span style="font-weight: bold;">I/O PORT</span>: A <b>composite component </b> that groups the pushbutton, the display and the sonar into the single physical interface between the customer and cargoservice.
-	Its role as the system's single entry point.
 
 	<br>
+	The Actual IOPort logic is represented as a QActor, embedding these 2 elements.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
 
 	// request for cargoservice
@@ -724,8 +849,6 @@ div.imagedesc{
 	Reply load_retrylater : load_retrylater(HOLDSTATE) for load_request
 	Reply load_refused    : load_refused(none)    for load_request
 
-	Context ctxcargoservice ip [host="localhost" port=8020]
-	Context ctxioport       ip [host="localhost" port=8021]
 
 	QActor ioport context ctxioport {
 		
@@ -794,6 +917,7 @@ div.imagedesc{
 
 	<li> <span style="font-weight: bold;">LED</span>: A <b>passive</b> output device. While the system is engaged it must blink for the customer window (~30s), then stop when the container is placed in the sensor area or the window expires.
 	Being passive, the LED does not own the timing: the 30s window is the same timeout that turns the engaged system into disengaged, owned by cargoservice, which starts and stops the blinking.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
 	QActor led context ctxdevices {
 	 State s0 initial {
@@ -811,18 +935,12 @@ div.imagedesc{
 
 	<br>
 
-	<li> <span style="font-weight: bold;">CARGOSERVICE</span>: The service to be built. It hosts the <b>business logic</b>: it receives the load request from the pushbutton, produces the answer (retrylater / reject / the name of the reserved slot), manages the engagement and the 30s window, drives the LED and the display, informs the sonar of the container position, and commands the cargorobot (IOPort &rarr; slot5 &rarr; reserved slot).
-	It has no passive data nature: it is an <b>active</b> entity whose lifecycle is a state machine. Its behaviour (states, transitions, timeouts) is <em>not</em> a requirement-analysis concern and is formalized in <b>Problem analysis</b>; here it is only named and its responsibilities delimited.
+	<li> <span style="font-weight: bold;">CARGOSERVICE</span>: This service needs to be built from scratch. <br>
+	It hosts the <b>business logic of the actual application</b>: it receives the load request from the pushbutton, produces the answer (retrylater / reject / the name of the reserved slot), manages the engagement and the 30s window, drives the LED and the display, informs the sonar of the container position, and commands the cargorobot (IOPort &rarr; slot5 &rarr; reserved slot).
+	It has no passive data nature: it is an <b>active</b> entity whose lifecycle is a state machine. Its behaviour (states, transitions, timeouts) is <em>not</em> a requirement-analysis concern and is formalized in <b>Problem analysis</b>; here it is only named and its responsibilities and interactions delimited.
 	
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
 	<pre>
-	System cargoservice
-	// QAK requirements analysis
-	// Made by:
-		//Alessandro Marcellini
-		//Alessandro Villani
-
-
-
 	// request for cargoservice
 	Request load_request : load_request(none)
 
@@ -837,13 +955,6 @@ div.imagedesc{
 
 	Event    outOfService : outOfService(none)
 	Event	 containerPositioned : containerPositioned(none)
-
-
-	Context ctxcargoservice ip [host="localhost" port=8020]
-	Context ctxioport       ip [host="localhost" port=8021]
-	Context ctxrobot        ip [host="localhost" port=8022]
-	Context ctxdevices      ip [host="localhost" port=8023]
-
 
 
 	QActor cargoservice context ctxcargoservice {
