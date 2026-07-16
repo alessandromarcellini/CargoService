@@ -32,8 +32,4 @@ with Diagram('cargoserviceArch', show=False, outformat='png', graph_attr=graphat
           sonar=Custom('sonar','./qakicons/symActorWithobjSmall.png')
           ioport=Custom('ioport','./qakicons/symActorWithobjSmall.png')
           led=Custom('led','./qakicons/symActorWithobjSmall.png')
-<<<<<<< Updated upstream
-=======
-     ioport >> Edge(color='magenta', style='solid', decorate='true', label='<load_request<font color="darkgreen"> load_accepted retrylater load_refused</font> &nbsp; >',  fontcolor='magenta') >> cargoservice
->>>>>>> Stashed changes
 diag

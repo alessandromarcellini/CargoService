@@ -16,7 +16,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory 
 import org.json.simple.parser.JSONParser
 import org.json.simple.JSONObject
-import kotlin.random.Random
 
 
 //User imports JAN2024
@@ -48,10 +47,10 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 					action { //it:State
 						CommUtils.outyellow("[SONAR] measuring distance...")
 						 CurrD = Random.nextInt(0, 6)  
-						if(  CurrD > DFREE  
+						if(  currD > DFREE  
 						 ){delay(3000) 
 						 CurrD = Random.nextInt(0, 6)  
-						if(  CurrD > DFREE  
+						if(  currD > DFREE  
 						 ){CommUtils.outblack("[SONAR] sonar error, hold is out of service")
 						}
 						}

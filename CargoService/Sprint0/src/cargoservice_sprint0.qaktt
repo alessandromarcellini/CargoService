@@ -12,6 +12,11 @@ Reply load_accepted   : load_accepted(SLOTID) for load_request
 Reply retrylater : retrylater(HOLDSTATE) for load_request
 Reply load_refused    : load_refused(none)    for load_request
 
+// cargoservice <-> cargorobot : reach a target station
+Request  reachTarget       : reachTarget(TARGET)
+Reply    targetReached     : targetReached(TARGET)       for reachTarget
+Reply    targetUnreachable : targetUnreachable(TARGET)   for reachTarget
+
 
 Context ctxcargoservice ip [host="localhost" port=8020] // context to run the cargoservice logic
 Context ctxioport       ip [host="localhost" port=8021] // context to run the ioport
@@ -77,28 +82,27 @@ QActor cargoservice context ctxcargoservice {
 
 }
 
-QActor robotservice context ctxrobot {
-	State s0 initial {
-		println("[ROBOT SERVICE] initialized") color magenta
-	}
-	
-	State work {
-		println("[ROBOT SERVICE] commanding the cargorobot to pickup the container from ioport") color magenta
-		delay 5000
-		println("[ROBOT SERVICE] commanding the cargorobot to move the container to slot5") color magenta
-		delay 5000
-		println("[ROBOT SERVICE] waiting for container to be scanned") color magenta
-		delay 5000
-		println("[ROBOT SERVICE] commanding the cargorobot to move the container from slot 5 to the designed slot") color magenta
-		delay 5000
-		println("[ROBOT SERVICE] commanding the cargorobot to move back to HOME") color magenta
-	}
-}
-
 QActor cargorobot context ctxrobot {
+
 	State s0 initial {
-		println("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice") color yellow
+		println("[CARGOROBOT] ready, waiting for reach-target goals from cargoservice") color yellow
 	}
+	Goto waiting
+
+	State waiting {
+	}
+	Transition t0
+		whenRequest reachTarget -> reaching
+
+	State reaching {
+		// Abstract behaviour only: the concrete route and elementary moves are
+		// delegated to the reused robot subsystem (RobotSmart26) in Design.
+		onMsg( reachTarget : reachTarget(Target) ) {
+			println("[CARGOROBOT] reaching target $Target ...") color yellow
+			replyTo reachTarget with targetReached : targetReached(Target)
+		}
+	}
+	Goto waiting
 }
 
 

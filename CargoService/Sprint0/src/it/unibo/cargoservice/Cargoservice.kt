@@ -16,8 +16,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory 
 import org.json.simple.parser.JSONParser
 import org.json.simple.JSONObject
-import it.unibo.Hold.Hold
-import it.unibo.Hold.HoldState
 
 
 //User imports JAN2024
@@ -32,7 +30,7 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-		        var hold = Hold()
+		        var hold = it.unibo.hold.Hold()
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -57,27 +55,10 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				state("handle_load_request") { //this:State
 					action { //it:State
 						CommUtils.outcyan("[CARGO SERVICE] evaluating load request...")
-						val currentHoldState = hold.getState()
-						if( currentHoldState != HoldState.DISENGAGED ) {
-							CommUtils.outcyan("[CARGO SERVICE] another container is being moved, replying with RETRY LATER.")
-							answer("load_request", "retrylater", "retrylater($currentHoldState)"   )
-						} else {
-							val slotToFill = hold.nextFreeSlot()
-							if( slotToFill == null ) {
-								CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
-								answer("load_request", "load_refused", "load_refused(none)"   )
-							} else {
-								CommUtils.outcyan("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.")
-								hold.setState(HoldState.ENGAGED)
-								val intSlotToFill = slotToFill.getId()
-								answer("load_request", "load_accepted", "load_accepted($intSlotToFill)"   )
-								delay(5000)
-								CommUtils.outblack("Make the robot work to load the container in the designated spot")
-							}
+						if(  ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED  
+						 ){CommUtils.outcyan("[CARGO SERVICE] another container is being moved, replying with RETRY LATER.")
+						answer("load_request", "retrylater", "retrylater(CurrentHoldState)"   )  
 						}
-<<<<<<< Updated upstream
-
-=======
 						if(  (var SlotToFill = hold.nextFreeSlot()) == null  
 						 ){CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
 						answer("load_request", "load_refused", "load_refused(none)"   )  
@@ -90,7 +71,6 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 						 delay(5000) 
 						 CommUtils.outblack("Make the robot work to load the container in the designated spot")
 						 }
->>>>>>> Stashed changes
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002

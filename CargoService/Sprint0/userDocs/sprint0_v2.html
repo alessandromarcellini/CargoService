@@ -296,7 +296,18 @@ div.imagedesc{
 	• The sensor associated to the IOPort is a device (a sonar) used to detect the presence of a container, when it measures a distance D, such that D < DFREE/2, during a reasonable time (e.g. 3 secs).
 </div>
 
+<h2>Sprint 0 Goal</h2>
+<div class="remark">
 
+	Engage with the stakeholder to:
+	<ul>
+		<li>Precisely and unambiguously define (formalize) the requirements of the system to be developed;</li>
+		<li>Outline an initial (executable) model of the system;</li>
+		<li>Establish a preliminary set of functional Test Plans based on the requirements model;</li>
+		<li>Identify the subset of requirements that will constitute the goal for Sprint 0.</li>
+	</ul>	
+
+</div>
 
 
 <h2>Requirements</h2>
@@ -319,20 +330,10 @@ div.imagedesc{
 
 </div>
 
-
 <h2>Requirement analysis</h2>
 <div class="remark">
 
 <br>
-<h3>Sprint0 Goal</h3>
-Engage with the stakeholder to:
-<ul>
-	<li>Precisely and unambiguously define (formalize) the requirements of the system to be developed;</li>
-	<li>Outline an initial (executable) model of the system;</li>
-	<li>Establish a preliminary set of functional Test Plans based on the requirements model;</li>
-	<li>Identify the subset of requirements that will constitute the goal for Sprint 1.</li>
-</ul>
-
 
 <h3>The nature of the system</h3>
 	Before modelling the single entities, it is worth reflecting on the nature of the system that the requirements imply.
@@ -375,7 +376,6 @@ As per the entities that need to be formalized by the requirements analysis they
         <tr><td>HoldState</td><td>enum</td><td>N/A</td></tr>
 
         <tr><td>cargoservice</td><td>service (QActor)</td><td>ctxcargoservice</td></tr>
-        <tr><td>robotservice</td><td>service (QActor)</td><td>ctxrobot</td></tr>
 
         <tr><td>cargorobot</td><td>actor</td><td>ctxrobot</td></tr>
 		<tr><td>ioport</td><td>actor</td><td>ctxioport</td></tr>
@@ -388,6 +388,9 @@ As per the entities that need to be formalized by the requirements analysis they
         <tr><td>load_accepted</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
         <tr><td>retrylater</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
         <tr><td>load_refused</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
+        <tr><td>reachTarget</td><td>request message</td><td>ctxcargoservice → ctxrobot</td></tr>
+        <tr><td>targetReached</td><td>reply message</td><td>ctxrobot → ctxcargoservice</td></tr>
+        <tr><td>targetUnreachable</td><td>reply message</td><td>ctxrobot → ctxcargoservice</td></tr>
         <tr><td></td><td></td><td></td></tr>
         <tr><td></td><td></td><td></td></tr>
         <tr><td></td><td></td><td></td></tr>
@@ -722,54 +725,139 @@ public class Hold implements IHold {
 
 	<li> <span style="font-weight: bold;">CARGOROBOT</span>: The cargorobot is a differential drive robot (DDR) that can move containers across the hold. It can move forward, backward, rotate, and stop; these actions are meant as commands.
 	<br><br>
-	It is provided directly by the client, and therefore will not be built from scratch by us.
-		The actual implementations of the robot and the robotservice provided by the client will be throughly discussed and analyized in order to establish what implementation is the best for our needs and if it needs to be slightly modifed in the problem analysis. <br>
-	<br>What follows is a simplified representation of its role in the system, enough to fix how cargoservice interacts with the robot, without committing here to a concrete implementation. <br>
-	<br><br>
-	The robot is not controlled directly. It is simulated by a distributed service that is the only component actually actuating the DDR. <br>
-	The access to it is layered:
-	<ul>
-		<li>VirtualRobot (WEnv): the simulator; it receives concrete movement commands (cril) over HTTP (synchronous) and WebSocket (asynchronous), and streams back the robot/sensor state.</li>
-		<li>RobotObj: a Java object that hides the network, translating method calls into cril commands sent to VirtualRobot.</li>
-		<li>robotservice26: a service (QActor) that wraps RobotObj and re-exposes robot control as message-based operations (abstract aril commands such as move / cmd / step) plus streamed events (e.g. sonardata).</li>
-	</ul>
 
-	<strong>Note:</strong><br>
-	In our system, <span style="font-weight: bold;">cargoservice</span> communicates only with robotservice, by exchanging messages: it never talks to the actual robot over the network directly. It reuses the robotservice service provided by the client and sees the robot purely as a message-driven service, sending the movement requests needed to carry a container (IOPort -> slot5 -> reserved slot) and, if needed, subscribing to the robot's streamed state.
-	<br><br>
-	The committente actually supplies more than one way to drive the robot (the RobotObj Java object directly, or the robotservice26 actor service, both on top of the VirtualRobot simulator). Choosing the most suitable one, deciding whether it must be adapted for this project, and deciding whether cargoservice should depend on robotservice26 directly or through an abstraction, are design concerns: they are deferred to the next sprint, in the Problem analysis.
-	<br>
-	Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">Protobook — ROBOTSERVICE26</a>.
-	<br>
-	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
-	<pre>
-		
-	QActor robotservice context ctxrobot {
-		State s0 initial {
-			println("[ROBOT SERVICE] initialized") color magenta
-		}
-		
-		
-		State work {
-			println("[ROBOT SERVICE] commanding the cargorobot to pickup the container from ioport") color magenta
-			delay 5000
-			println("[ROBOT SERVICE] commanding the cargorobot to move the container to slot5") color magenta
-			delay 5000
-			println("[ROBOT SERVICE] waiting for container to be scanned") color magenta
-			delay 5000
-			println("[ROBOT SERVICE] commanding the cargorobot to move the container from slot 5 to the designed slot") color magenta
-			delay 5000
-			println("[ROBOT SERVICE] commanding the cargorobot to move back to HOME") color magenta
-		}
-		Goto waiting
-	}
+	<p>
+        <strong>Questions to Client:</strong>
+        <ol>
+            <li>Do we need to design and implement the ddr from scratch or do we have access to a ready-to-use solution?</li>
+        </ol>
+        <br>
+        <strong>Answers from Client:</strong>
+        <ol>
+            <li>The implementations provided by us are the following:
+				<ul>
+					<li>VirtualRobot (WEnv): the simulator; it receives concrete movement commands (cril) over HTTP (synchronous) and WebSocket (asynchronous), and streams back the robot/sensor state.
+						<br>
+						Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#VIRTUALROBOT26">Protobook — VIRTUALROBOT26</a>.
+						<br>
+					</li>
+					<li>RobotObj: a Java object that hides the network, translating method calls into cril commands sent to VirtualRobot.
+						<br>
+						Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTOBJ26">Protobook — ROBOTOBJ26</a>.
+						<br>
+					</li>
+					<li>RobotService26: a service (QActor) that wraps RobotObj and re-exposes robot control as message-based operations (abstract aril commands such as move / cmd / step) plus streamed events (e.g. sonardata).
+						<br>
+						Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">Protobook — ROBOTSERVICE26</a>.
+						<br>
+					</li>
+					<li>RobotSmart26: 
+						<br>
+						Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSMART26">Protobook — ROBOTSMART26</a>.
+						<br>
+					</li>
+				</ul>
+			</li>
+        </ol>
+    </p>
 
-	QActor cargorobot context ctxrobot {
-		State s0 initial {
-			println("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice") color yellow
-		}
-	}
-	</pre>
+
+	<strong>Let's model first cargorobot based on the requirements:</strong>
+<br><br>
+
+The requirement names one and only one robot entity, the <b>cargorobot</b>, and it is explicit about who orchestrates the movements:
+<div class="req" style="width:auto">
+"the <b>cargoservice</b> uses the cargorobot to move the container from the IOPort to the slot5 (for marking the container) <b>and then</b> to the reserved slot."
+</div>
+<br>
+So the sequence of moves (IOPort &rarr; slot5 &rarr; reserved slot, with the marking stop in between) is decided by the <b>business logic</b> &mdash; by cargoservice, which owns the hold and therefore already knows the reserved slot. The cargorobot is not asked where to go; it is asked to reach a target chosen by the business logic. This yields one sharp split of responsibilities:
+<ul>
+    <li><b>cargoservice</b> (business logic): decides the sequence of moves (from one station to the next) and waits for the marking, exactly as the requirement sentence dictates;</li>
+    <li><b>cargorobot</b> (robot actor): given one target at a time, brings the robot to it and reports success or failure. How it reaches the target (route computation, elementary moves) is internal to the robot and is deferred to Problem analysis / Design.</li>
+</ul>
+<br>
+
+The abstract contract of the cargorobot is therefore a single goal-level request with its correlated replies:
+<br>
+<pre>
+// cargoservice --> cargorobot : "reach this target station"
+Request  reachTarget       : reachTarget(TARGET)          "bring the robot to the TARGET station"
+Reply    targetReached     : targetReached(TARGET)        for reachTarget
+Reply    targetUnreachable : targetUnreachable(TARGET)    for reachTarget
+
+QActor cargorobot context ctxrobot {
+
+    State s0 initial {
+        println("[CARGOROBOT] ready, waiting for reach-target goals from cargoservice") color yellow
+    }
+    Goto waiting
+
+    State waiting {
+    }
+    Transition t0
+        whenRequest reachTarget -> reaching
+
+    State reaching {
+        // Abstract behaviour only: the concrete route + elementary moves are
+        // delegated to the reused robot subsystem (see next section and Design).
+        onMsg( reachTarget : reachTarget(Target) ) {
+            println("[CARGOROBOT] reaching target $Target ...") color yellow
+            replyTo reachTarget with targetReached : targetReached(Target)
+        }
+    }
+    Goto waiting
+}
+</pre>
+<br>
+With this contract cargoservice performs the loading trip by issuing reachTarget once per move &mdash; to the IOPort, then to slot5, then (after the ~5&nbsp;s marking delay) to the reserved slot, then back to HOME &mdash; each move confirmed by the targetReached reply before the next one is sent. The two actors' behaviour as Moore FSMs belongs to Problem analysis and is not anticipated here.
+
+<br><br><br><br>
+	
+<strong>Which of the solutions provided by the committente is the most suitable for our system?</strong>
+<br><br>
+
+The committente offers four ready-made assets stacked on top of each other. The right question is not "which is the most advanced" but "which one already provides what our <tt>cargorobot</tt> contract (<tt>reachTarget(TARGET)</tt>) needs, so that we do not re-build it". Evaluated against that contract:
+<br><br>
+
+<table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+        <tr><th>Asset</th><th>What it provides</th><th>What we would still have to build</th><th>Verdict</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><b>VirtualRobot (WEnv)</b></td>
+            <td>The robot simulator itself. It understands only low-level movement commands (turn, step) sent over the network (HTTP / WebSocket) and reports back the robot position and sensor readings.</td>
+            <td>Everything on top: speaking its protocol, working out the route to a destination, keeping a map of the environment, and turning that route into single moves.</td>
+            <td>Too low-level: it is the simulator the other three are built on, not something we would talk to directly. Rejected.</td>
+        </tr>
+        <tr>
+            <td><b>RobotObj</b></td>
+            <td>A Java object that wraps the network: we call its methods and it forwards the low-level commands to the simulator.</td>
+            <td>Working out the route, keeping the map and coordinating the moves are still on us &mdash; and it is a plain object, not something that talks by messages the way our actors do.</td>
+            <td>It hides the network, not the decision-making. Rejected.</td>
+        </tr>
+        <tr>
+            <td><b>RobotService26</b></td>
+            <td>An actor (QActor) wrapping RobotObj: it re-exposes robot control as messages (single moves such as forward / turn / step) and streams sensor events.</td>
+            <td>Still no route-planner and no map: to carry out a command like "go to slot5" we would have to work out the route and send every single move ourselves.</td>
+            <td>Message-based, so it fits qak well, but still too low-level for a "go to a place" command. Rejected.</td>
+        </tr>
+        <tr>
+            <td><b>RobotSmart26</b></td>
+            <td>Adds the two missing pieces &mdash; an automatic <b>route-planner (A*)</b> and a <b>map of the environment</b> &mdash; behind one high-level command, <tt>moverobot(X, Y, stepTime)</tt> = "go to this point". It also offers helpers (build a route, set / read the robot position, return home) and streams a sensor alarm.</td>
+            <td>Only a small translation from our named places (IOPort, slot5, reserved slot) to the (X, Y) coordinates it expects.</td>
+            <td><b>Chosen.</b></td>
+        </tr>
+    </tbody>
+</table>
+<br>
+
+<b>Why RobotSmart26</b>
+<br>
+Our abstract <tt>cargorobot</tt> needs exactly one thing: "reach a target". RobotSmart26's <tt>moverobot(X,Y)</tt> is that operation &mdash; it reads the current position, builds the route with A*, executes it move-by-move, and replies done/failed. The match with our contract is nearly one-to-one, so cargorobot reduces to a <b>thin adapter</b> that translates a domain target (IOPort, slot5, reserved slot) into the coordinates <tt>moverobot</tt> expects. This is reuse with a stated reason, not a blind copy: everything the simpler assets would force us to write &mdash; the route-planner, the map, and issuing the individual moves &mdash; is exactly what RobotSmart26 already provides.
+
+
+<br>
 	</li>
 
 	<br>
@@ -1182,7 +1270,7 @@ class TestPlanSprint0 {
 </div>
 
 
-<h2>Sprint1 Goal</h2>
+<h2>Sprint 1 Goal</h2>
 <div class="remark">
 
 The goal of Sprint 1 is to create an executable prototype of the cargo service that implements the core business logic (loading and moving of the container), starting from the user load request
