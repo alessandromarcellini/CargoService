@@ -1,0 +1,216 @@
+System cargoservice
+// QAK Problem analysis
+// Made by:
+	//Alessandro Marcellini
+	//Alessandro Villani
+
+// request for cargoservice
+Request load_request : load_request(none)
+
+// reply to ioport
+Reply load_accepted   : load_accepted(SLOTID) for load_request
+Reply load_retrylater : load_retrylater(HOLDSTATE) for load_request
+Reply load_refused    : load_refused(none)    for load_request
+
+// message for robotservice to start working to move the container
+Dispatch checkMeasurement : checkMeasurement(none)
+
+// utility messages for cargoservice
+Dispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
+Dispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+
+Event    outOfService : outOfService(none)
+Event	 containerPositioned : containerPositioned(none)
+
+
+Context ctxcargoservice ip [host="localhost" port=8020]
+Context ctxioport       ip [host="localhost" port=8021]
+Context ctxrobot        ip [host="localhost" port=8022]
+Context ctxdevices      ip [host="localhost" port=8023]
+
+
+
+QActor cargoservice context ctxcargoservice {
+
+    [#
+        var hold = it.unibo.hold.Hold()
+        var CurrentSlotToFillId = -1
+    #]
+
+
+    State s0 initial {
+        println("[CARGO SERVICE] started") color blue
+    }
+    Goto waiting
+
+    State waiting {
+        println("[CARGO SERVICE] DISENGAGED: waiting for load_requests") color green
+    }
+    Transition t0
+        whenRequest load_request -> handle_load_request
+
+    State handle_load_request {
+    	println("[CARGO SERVICE] evaluating load request...") color cyan
+    	
+    	if [# ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED #] { // another container is being moved, retry later
+    		println("[CARGO SERVICE] another container is being moved or the hold is 'out of service', replying with RETRY LATER.") color cyan
+    		replyTo load_request with load_retrylater : load_retrylater(CurrentHoldState)
+    		autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+    	}
+    	
+    	
+    	if [# (var SlotToFill = hold.nextFreeSlot()) == null #] { // all slots are taken, refuse request
+    		println("[CARGO SERVICE] all slots are taken, replying with REFUSED.") color cyan
+    		replyTo load_request with load_refused : load_refused(none)
+    		autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+    	}
+    	else {
+    		println("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.") color cyan
+    		[# hold.setState(HoldState.ENGAGED) #]
+    		[# CurrentSlotToFillId = SlotToFill.getId() #]
+    		replyTo load_request with load_accepted : load_accepted(CurrentSlotToFillId)
+    		
+    		//goto accept_load_request
+    		autodispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
+    	}
+    }
+    Transition t0
+    	whenMsg cargoservice_goto_accept_load_request -> accept_load_request
+    	whenMsg cargoservice_goto_waiting -> waiting
+    
+    State accept_load_request {
+    	// wait for up to 30 seconds for the sonar signal
+    	forward sonar -m checkMeasurement : checkMeasurement(none) // TODO could be useless if the sonar is proactive, in that case comment this out
+    	
+    	// if not received goto disengaged
+    	// if received move the robot
+    }
+    Transition t0
+    	whenTime 30000 -> switch_to_disengaged
+    	whenEvent containerPositioned -> move_robot
+    	whenEvent outOfService -> set_outofservice
+    	
+    State move_robot {
+		// move the robot to get to the IOPort
+		// move the robot to get to slot5
+		// wait a set time of 5s
+		// move the robot to the designated slot
+		[# hold.setSlotOccupied(CurrentSlotToFillId) #]
+		
+		// when receiving message from robot service that everything has been done Goto switch to disengaged
+    }
+    
+    State set_outofservice {
+    	[# hold.setState(HoldState.OUTOFSERVICE) #]
+    }
+    Goto waiting
+    
+
+    
+    State switch_to_disengaged {
+    	[# hold.setState(HoldState.DISENGAGED) #]
+    }
+    Goto waiting
+
+}
+
+
+QActor sonar context ctxdevices {
+	[#
+		val DFREE  = 3
+		var CurrD = 0
+	#]
+	State waiting initial {
+		println("[SONAR] ready!") color yellow
+	}
+	Transition t0
+		whenMsg checkMeasurement -> measureDistance
+
+	
+	State measureDistance {
+		println("[SONAR] measuring distance...") color yellow
+		[# CurrD = Random.nextInt(0, 6) #]
+		if [# currD > DFREE #] {
+			delay 3000 // if after 3 seconds it is still > currD
+			[# CurrD = Random.nextInt(0, 6) #]
+			if [# currD > DFREE #] {
+				println("[SONAR] send message to cargoservice that the hold is out of service")
+				emit outOfService : outOfService(none)
+			}
+			else {
+				emit containerPositioned : containerPositioned(none)
+			}
+		}
+		else {
+			if [# CurrD < DFREE / 2 #] {
+				emit containerPositioned : containerPositioned(none)
+			}
+		}
+	}
+	Goto waiting
+}
+
+
+
+QActor ioport context ctxioport {
+	
+	[#
+		IDisplay display = new Display();
+	#]
+	
+	State s0 initial {
+		println("[IOPORT] SIMULATING PUSHBUTTON LOGIC")
+		[# display.setBookedSlot(-1) #]
+		[# display.setState("...") #]
+	}
+	Goto simulate_pushbutton
+
+
+	State simulate_pushbutton {
+		[# 
+			println("Press Enter to send load request: ")
+			readln()	
+		#]
+		[# display.setBookedSlot(-1) #]
+		[# display.setState("...") #]
+		println("[IOPORT] customer pressed pushbutton")
+		request cargoservice -m load_request : load_request(none)
+	}
+	Transition t0
+		whenReply load_accepted -> accepted
+		whenReply load_retrylater -> retrylater
+		whenReply load_refused -> refused
+
+	State accepted {
+		println("[IOPORT] DISPLAY: load_accepted received") color green
+		
+		onMsg( load_accepted : load_accepted(slotId)) {
+			[# display.setBookedSlot(slotId) #]
+			[# display.setState("load accepted, system enganged") #]
+		}
+	}
+	Goto simulate_pushbutton
+
+
+	State retrylater {
+		println("[IOPORT] DISPLAY: load_retrylater received") color yellow
+		
+		
+		onMsg( load_retrylater : load_retrylater(CurrentHoldState)) {
+			if [# CurrentHoldState == HoldState.ENGAGED #] {
+				[# display.setState("retry later, another request is being served...") #]
+			}
+			else {
+				[# display.setState("retry later, the hold is currently out of service...") #]
+			}
+		}
+	}
+	Goto simulate_pushbutton
+
+	State refused {
+		println("[IOPORT] DISPLAY: load_refused received, all slots are occupied") color red
+		
+		[# display.setState("refused, the hold' slots are all occupied.") #]
+	}
+	Goto simulate_pushbutton
+}

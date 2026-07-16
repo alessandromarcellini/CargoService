@@ -16,8 +16,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory 
 import org.json.simple.parser.JSONParser
 import org.json.simple.JSONObject
-import it.unibo.Hold.Hold
-import it.unibo.Hold.HoldState
 
 
 //User imports JAN2024
@@ -32,7 +30,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-		        var hold = Hold()
+		        var hold = it.unibo.hold.Hold()
+		        var CurrentSlotToFillId = -1
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -57,45 +56,63 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				state("handle_load_request") { //this:State
 					action { //it:State
 						CommUtils.outcyan("[CARGO SERVICE] evaluating load request...")
-						val currentHoldState = hold.getState()
-						if( currentHoldState != HoldState.DISENGAGED ) {
-							CommUtils.outcyan("[CARGO SERVICE] another container is being moved, replying with RETRY LATER.")
-							answer("load_request", "retrylater", "retrylater($currentHoldState)"   )
-						} else {
-							val slotToFill = hold.nextFreeSlot()
-							if( slotToFill == null ) {
-								CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
-								answer("load_request", "load_refused", "load_refused(none)"   )
-							} else {
-								CommUtils.outcyan("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.")
-								hold.setState(HoldState.ENGAGED)
-								val intSlotToFill = slotToFill.getId()
-								answer("load_request", "load_accepted", "load_accepted($intSlotToFill)"   )
-								delay(5000)
-								CommUtils.outblack("Make the robot work to load the container in the designated spot")
-							}
+						if(  ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED  
+						 ){CommUtils.outcyan("[CARGO SERVICE] another container is being moved or the hold is 'out of service', replying with RETRY LATER.")
+						answer("load_request", "load_retrylater", "load_retrylater(CurrentHoldState)"   )  
+						forward("cargoservice_goto_waiting", "cargoservice_goto_waiting(none)" ,name ) 
 						}
-<<<<<<< Updated upstream
-
-=======
 						if(  (var SlotToFill = hold.nextFreeSlot()) == null  
 						 ){CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
 						answer("load_request", "load_refused", "load_refused(none)"   )  
+						forward("cargoservice_goto_waiting", "cargoservice_goto_waiting(none)" ,name ) 
 						}
 						else
 						 {CommUtils.outcyan("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.")
 						  hold.setState(HoldState.ENGAGED)  
-						  var intSlotToFill = SlotToFill.getId()  
-						 answer("load_request", "load_accepted", "load_accepted(intSlotToFill)"   )  
-						 delay(5000) 
-						 CommUtils.outblack("Make the robot work to load the container in the designated spot")
+						  CurrentSlotToFillId = SlotToFill.getId()  
+						 answer("load_request", "load_accepted", "load_accepted(CurrentSlotToFillId)"   )  
+						 forward("cargoservice_goto_accept_load_request", "cargoservice_goto_accept_load_request(none)" ,name ) 
 						 }
->>>>>>> Stashed changes
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
+					 transition(edgeName="t01",targetState="accept_load_request",cond=whenDispatch("cargoservice_goto_accept_load_request"))
+					transition(edgeName="t02",targetState="waiting",cond=whenDispatch("cargoservice_goto_waiting"))
+				}	 
+				state("accept_load_request") { //this:State
+					action { //it:State
+						forward("checkMeasurement", "checkMeasurement(none)" ,"sonar" ) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+				 	 		stateTimer = TimerActor("timer_accept_load_request", 
+				 	 					  scope, context!!, "local_tout_"+name+"_accept_load_request", 30000.toLong() )  //OCT2023
+					}	 	 
+					 transition(edgeName="t03",targetState="switch_to_disengaged",cond=whenTimeout("local_tout_"+name+"_accept_load_request"))   
+					transition(edgeName="t04",targetState="move_robot",cond=whenEvent("containerPositioned"))
+					transition(edgeName="t05",targetState="set_outofservice",cond=whenEvent("outOfService"))
+				}	 
+				state("move_robot") { //this:State
+					action { //it:State
+						 hold.setSlotOccupied(CurrentSlotToFillId)  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+				}	 
+				state("set_outofservice") { //this:State
+					action { //it:State
+						 hold.setState(HoldState.OUTOFSERVICE)  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
 				}	 
 				state("switch_to_disengaged") { //this:State
 					action { //it:State

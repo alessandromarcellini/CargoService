@@ -30,18 +30,27 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-				val display = Display()
+				IDisplay display = new Display();
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
+						CommUtils.outblack("[IOPORT] SIMULATING PUSHBUTTON LOGIC")
+						 display.setBookedSlot(-1)  
+						 display.setState("...")  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
+					 transition( edgeName="goto",targetState="simulate_pushbutton", cond=doswitch() )
 				}	 
-				state("work") { //this:State
+				state("simulate_pushbutton") { //this:State
 					action { //it:State
+						 
+									println("Press Enter to send load request: ")
+									readln()	
+						 display.setBookedSlot(-1)  
+						 display.setState("...")  
 						CommUtils.outblack("[IOPORT] customer pressed pushbutton")
 						request("load_request", "load_request(none)" ,"cargoservice" )  
 						//genTimer( actor, state )
@@ -49,16 +58,16 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t01",targetState="accepted",cond=whenReply("load_accepted"))
-					transition(edgeName="t02",targetState="retrylater",cond=whenReply("retrylater"))
-					transition(edgeName="t03",targetState="refused",cond=whenReply("load_refused"))
+					 transition(edgeName="t07",targetState="accepted",cond=whenReply("load_accepted"))
+					transition(edgeName="t08",targetState="retrylater",cond=whenReply("load_retrylater"))
+					transition(edgeName="t09",targetState="refused",cond=whenReply("load_refused"))
 				}	 
 				state("accepted") { //this:State
 					action { //it:State
 						CommUtils.outgreen("[IOPORT] DISPLAY: load_accepted received")
 						if( checkMsgContent( Term.createTerm("load_accepted(SLOTID)"), Term.createTerm("load_accepted(slotId)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								 display.setBookedSlot(payloadArg(0).toInt())  
+								 display.setBookedSlot(slotId)  
 								 display.setState("load accepted, system enganged")  
 						}
 						//genTimer( actor, state )
@@ -66,14 +75,14 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition( edgeName="goto",targetState="work", cond=doswitch() )
+					 transition( edgeName="goto",targetState="simulate_pushbutton", cond=doswitch() )
 				}	 
 				state("retrylater") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[IOPORT] DISPLAY: retrylater received")
-						if( checkMsgContent( Term.createTerm("retrylater(HOLDSTATE)"), Term.createTerm("retrylater(CurrentHoldState)"), 
+						CommUtils.outyellow("[IOPORT] DISPLAY: load_retrylater received")
+						if( checkMsgContent( Term.createTerm("load_retrylater(HOLDSTATE)"), Term.createTerm("load_retrylater(CurrentHoldState)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								if(  payloadArg(0) == "ENGAGED"  
+								if(  CurrentHoldState == HoldState.ENGAGED  
 								 ){ display.setState("retry later, another request is being served...")  
 								}
 								else
@@ -85,7 +94,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition( edgeName="goto",targetState="work", cond=doswitch() )
+					 transition( edgeName="goto",targetState="simulate_pushbutton", cond=doswitch() )
 				}	 
 				state("refused") { //this:State
 					action { //it:State
@@ -96,7 +105,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition( edgeName="goto",targetState="work", cond=doswitch() )
+					 transition( edgeName="goto",targetState="simulate_pushbutton", cond=doswitch() )
 				}	 
 			}
 		}
