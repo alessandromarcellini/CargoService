@@ -1,0 +1,1213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <!--
+<link rel="stylesheet" type="text/css" href="../css/issStyle1.css">
+<script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/foundation-sites@6.7.4/dist/css/foundation.min.css" crossorigin="anonymous">
+		<script src="https://cdn.jsdelivr.net/npm/foundation-sites@6.7.4/dist/js/foundation.min.js"crossorigin="anonymous"></script> 
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="./commons/resources/styles/templateISS.css">
+        <link rel="stylesheet" type="text/css" href="./commons/resources/styles/main.css">
+        <link rel="stylesheet" type="text/css" href="./commons/resources/styles/navbar.css">
+        <link rel="stylesheet" type="text/css" href="./commons/resources/styles/table.css">
+        <link rel="stylesheet" type="text/css" href="./commons/resources/styles/code.css">
+        <!-- <script type="text/javascript" src="./commons/resources/scripts/myScripts.js"></script> -->
+<style type="text/css">
+body
+{
+    margin-left:  30px;
+    margin-right: 30px;
+};
+
+P
+{
+    font-family: Tahoma;
+    font-size: 10pt;
+};
+
+a, a:visited, a:active, a:link, a:hover {
+    text-decoration: underline;
+    color: #545454;
+    background-color: transparent;
+	font-size: 93%;
+}
+
+a:hover {
+    background-color: #cccccc;
+}
+
+
+hr {
+    clear: both;
+    height: 1px;
+    color: #242424;
+    background-color: transparent;
+}
+
+h1, h2, h3 {
+    color: #242424;
+    clear: left;
+    font: 100% Tahoma, Helvetica, Arial, sans-serif;
+    margin-bottom: 0.5em;
+    padding-top: 0.5em;
+	border-radius: 10px;
+	padding: 5px;
+}
+
+top {
+	width: 100%;
+}
+
+
+#i {
+    color: #ff1010;
+}
+tt{
+	font-family: "Arial";
+    font-size: 90%;
+	color: #006600;
+}
+em{
+	font-family: "Arial";
+    font-size: 80%;
+	font-weight: bold;
+	border-style:solid;
+	border-color: #abe876;
+    color: #1632cc;
+}
+bc{
+	font-family: "Arial";
+	font-size: 90%;
+	font-weight: bold;
+    color: #990000;
+	background-color: #fcf8c7;
+}
+ks{
+	font-family: "Arial";
+	font-weight: bold;
+    color: #0000CD	;
+	font-size: 90%;
+}
+kc{
+	font-family: "Arial";
+	font-weight: bold;
+    color: #008000	;
+	font-size: 90%;
+}
+pre{
+	font-family: "Consolas";
+	font-size: 85%;
+	background-color: #f5f5f5;
+	border: 1.5px solid silver;
+	padding: 5px;
+}
+m{
+	font-family: "Helvetica";
+	line-height: 100%;
+ 	font-size: 75%;
+}
+div.body{
+	 
+    font-size: 18px;
+}
+k{
+    color: #990000;
+	font-weight: bold;
+	font-size: 90%;
+}
+h1 {
+    font-size: 150%;
+    background-color: #b2c0ff;
+	padding: 10px;
+}
+
+h2 {
+    background-color: #9ed8ff;
+    font-size: 130%;
+}
+
+h3 {
+	background-color: #e6ccff;
+    font-size: 100%;
+}
+h4 {
+    background-color: #ccffcc;
+    font-size: 100%;
+	width: 95%;
+	border-radius: 5px;
+	padding: 2px;
+}
+h5 {
+    background-color: #d5ffb0;
+    font-size: 100%;
+
+}
+div.req{
+	background-color: #d9ffb3;
+    font-size: 18px;
+	width: 700px;
+    border: 3px solid green;
+    padding: 15px;
+    margin: 10px;
+}
+div.remark{
+	background-color: #E3F2FD;
+    border: 1.5px solid #d5f2ed;
+    padding: 15px;
+    margin: 10px;
+	border-radius: 25px;
+}
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+ol, ul, li {
+  margin: 0;
+  margin-left: 10px;
+  padding: 0;
+  padding-bottom: 5px;
+}
+
+table, th, td {
+	border: 1px solid black;
+}
+
+img {
+	border: 1.5px solid #d5f2ed
+
+}
+
+a, a:visited, a:active, a:link, a:hover {
+    text-decoration: underline;
+    color: #545454;
+    background-color: transparent;
+}
+
+div.wrapdesc{
+	width: 90%;
+	margin: auto;
+}
+
+div.imagedesc{
+	width: 85%;
+	margin: auto;
+}
+
+ 
+    svg{
+        background:white;
+        border:1px solid #888;
+    }
+ 
+    .room{
+        fill:#eef8d5;
+        stroke:#3d6b2f;
+        stroke-width:3;
+    }
+ 
+    .axis{
+        stroke:black;
+        stroke-width:2;
+        marker-end:url(#arrow);
+    }
+ 
+    .grid{
+        stroke:#ddd;
+        stroke-width:1;
+    }
+ 
+    .slot{
+        fill:#6f8f56;
+        stroke:#355226;
+        stroke-width:2;
+    }
+ 
+    .label{
+        font-size:14px;
+        font-weight:bold;
+    }
+ 
+    .device{
+        fill:#ffe59e;
+        stroke:#d89000;
+        stroke-width:2;
+        rx:6;
+	}
+
+
+</style>
+    
+ 
+   
+</head>
+	
+		
+  
+
+
+   
+<title>CargoService Sprint 0</title></head>
+    
+<!--
+	<body onload="loadNav();">
+		<div id="openButton" class="openButton" onclick="openNav(true)">&#9776; Menu</div>
+		<div id="sidenav" class="sidenav">
+			<a class="closeButton" href="javascript:void(0)" onclick="closeNav(true)">&times;</a>
+			<a href=".README.html">ReadMe</a>
+			<a class="sprint" href="../../../Sprint0/Codice/userDocs/Cold%20Storage%20Service%20-%20Natali%20V3.html">Sprint0</a>
+			<a class="sprint" href="../../../Sprint1.0/Codice/userDocs/Sprint%201.0%20-%20V3.html">Sprint1.0</a>
+			<a class="sprint" href="../../../Sprint1.1/Codice/userDocs/Sprint%201.1%20-%20V3.html">Sprint1.1</a>
+			<a id="currentSprint" class="sprint" href="#">&#8211;&#8212; Sprint2 &#8212;&#8211;</a>
+			<div class="sidenavSection">
+				<a href="#Goal Sprint 2">Goal Sprint 2</a>
+				<a href="#Requisiti">Requisiti</a>
+				<a href="#Analisi dei Requisiti">Analisi dei Requisiti</a>
+				<a href="#Analisi del Problema">Analisi del Problema</a>
+				<a href="#Test Plan">Test Plan</a>
+				<a href="#Progettazione">Progettazione</a>
+				<a href="#Deployment">Deployment</a>
+			</div>
+			<p class="separator">&mdash;&mdash;&mdash;&ndash;&ndash;&mdash;&mdash;&mdash;</p>
+			<a class="sprint" href="../../../Sprint3/Codice/userDoc/Sprint%203.html">Sprint3</a>
+			<bottom-spacer/>
+		</div>
+-->
+<body>
+<div id="top">
+<h1>LABORATORIO DI INGEGNERIA DEI SISTEMI SOFTWARE <font size="5"></font> </h1>
+</div>  
+
+<div class="body"> 
+<h2>Introduction</h2>
+<div class="remark">
+
+	A Maritime Cargo shipping company (fron now on, simply company) intends to automate the operations of load of containers in the ship's cargo hold (or simply hold). To this end, the company plans to employ a Differential Drive Robot (from now, called cargorobot).<br>
+	The hold is a rectangular, flat area with an Input/Output port (IOPort). The area provides 4 slots to store the containers and a slot named slot5.<br>
+	<br>
+	<img src="./img/intro_view.jpg" alt="cargoservice" width="30%" height="30%"><br>
+	<br>
+	In the picture above:<br>
+	• The slots1-4 depict the hold areas reserved to store one container each,<br>
+	• The slots5 depicts an area, where the cargorobot must temporarily store a container, before to place it in one of the slots1-4. During temporary storage, a 'marker' device labels the container with an identification barcode and signals when this marking activity is completed.<br>
+	• The IOPort is a device with a pushbutton and a display. The pushbutton is pressed by the customer in order to send a request to load a container on the cargo. The display is used to show the answer to the request and to show the current state of the hold.<br>
+	• The sensor associated to the IOPort is a device (a sonar) used to detect the presence of a container, when it measures a distance D, such that D < DFREE/2, during a reasonable time (e.g. 3 secs).
+</div>
+
+
+
+
+<h2>Requirements</h2>
+<div class="remark">
+
+	The company asks us to build service named cargoservice that should work as follows.<br>
+	The cargoservice is able to receive a request to load a container sent by some customer by using the pushbutton of the IOPort.<br>
+	<br>
+	• It sends the answer retrylater, if the IOPort is currently occupied by a container or if the system is Out of service<br>
+	• It rejects the request when the hold is already full, i.e. the slots1-4 are already occupied.<br>
+	• Otherwise, it considers the system as engaged, detects a free slot and returns as answer the name of such a reserved slot. While engaged, the system must blink a Led.<br>
+	<br>
+	When the request to load is accepted, the customer must move the container in the sensor area within prefixed amount of time (e.g. 30 secs), otherwise the systems becomes disengaged. Then, the cargoservice uses the cargorobot to move the container from the IOPort to the slot5 (for marking the container) and then to the reserved slot.<br>
+	<br>
+	The service must also show on the display on the IOPort:<br>
+	• the current state of the hold<br>
+	• the message 'Service working', when it is all is going well<br>
+	• the message 'Out of service' if the sonar sensor measures a distance D > DFREE for at least 3 secs (perhaps a failure of the sonar).
+
+
+</div>
+
+
+<h2>Requirement analysis</h2>
+<div class="remark">
+
+<br>
+<h3>Sprint0 Goal</h3>
+Engage with the stakeholder to:
+<ul>
+	<li>Precisely and unambiguously define (formalize) the requirements of the system to be developed;</li>
+	<li>Outline an initial (executable) model of the system;</li>
+	<li>Establish a preliminary set of functional Test Plans based on the requirements model;</li>
+	<li>Identify the subset of requirements that will constitute the goal for Sprint 1.</li>
+</ul>
+
+
+<h3>The nature of the system</h3>
+	Before modelling the single entities, it is worth reflecting on the nature of the system that the requirements imply.
+	<br><br>
+	Is the software concentrated or distributed? It cannot be a single, concentrated program. The requirements describe parts that live and act independently: the IOPort devices (pushbutton, display, LED), the sonar, the business logic of cargoservice, and the robot. These parts do not share memory; they need to cooperate, possibly across the network, operating on different nodes. The system is therefore inherently distributed.
+	<br><br>
+	Is the software heterogeneous? Yes. The parts that need to be developed are really different both in characteristics and in the way they need to be hosted, therefore different languages, protocols and execution environments must coexist and interoperate.
+	<br><br>
+	How many nodes are needed to deploy it? A first, rough estimate, to be refined in design, is at least 3 nodes:
+		<ol>
+			<li>Pico W: the node on which the sonar and the LED will be physically placed and their business logic will run;</li>
+			<li>IO Port: the node on which the IO Port web-gui and logic will run;</li>
+			<li>CargoService: the node that will actually implement the logic of the robot, the logic to control it and the logic to make it do move containers as the client intended it to.</li>
+		</ol>
+
+<br>
+To formalize nodes we can define the following QAK contexts (see the next paragraph to know about the qak modelling language). It has been established that to be more complete in the representation 4 nodes are more suitable for the application that has been issued.
+<pre>
+Context ctxcargoservice ip [host="localhost" port=8020] // context to run the cargoservice logic
+Context ctxioport       ip [host="localhost" port=8021] // context to run the ioport
+Context ctxrobot        ip [host="localhost" port=8022] // context to run the actual robot
+Context ctxdevices      ip [host="localhost" port=8023] // context to run the PICOW ioport components
+</pre>
+<br><br>
+As per the entities that need to be formalized by the requirements analysis they're summurized inside the following table:
+<table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+        <tr>
+            <th>Entity</th>
+            <th>Type</th>
+            <th>Context</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>IContainer / Container</td><td>POJO</td><td>N/A</td></tr>
+        <tr><td>ISlot / Slot</td><td>POJO</td><td>N/A</td></tr>
+        <tr><td>IHold / Hold</td><td>POJO</td><td>N/A</td></tr>
+        <tr><td>IDisplay / Display</td><td>POJO</td><td>N/A</td></tr>
+
+        <tr><td>HoldState</td><td>enum</td><td>N/A</td></tr>
+
+        <tr><td>cargoservice</td><td>service (QActor)</td><td>ctxcargoservice</td></tr>
+        <tr><td>robotservice</td><td>service (QActor)</td><td>ctxrobot</td></tr>
+
+        <tr><td>cargorobot</td><td>actor</td><td>ctxrobot</td></tr>
+		<tr><td>ioport</td><td>actor</td><td>ctxioport</td></tr>
+        <tr><td>sonar</td><td>actor</td><td>ctxdevices</td></tr>
+        <tr><td>led</td><td>actor</td><td>ctxdevices</td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td>load_request</td><td>request message</td><td>ctxioport → ctxcargoservice</td></tr>
+        <tr><td>load_accepted</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
+        <tr><td>retrylater</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
+        <tr><td>load_refused</td><td>reply message</td><td>ctxcargoservice → ctxioport</td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td></tr>
+        <tr><td>ctxcargoservice</td><td>context</td><td>ctxcargoservice</td></tr>
+        <tr><td>ctxioport</td><td>context</td><td>ctxioport</td></tr>
+        <tr><td>ctxrobot</td><td>context</td><td>ctxrobot</td></tr>
+        <tr><td>ctxdevices</td><td>context</td><td>ctxdevices</td></tr>
+    </tbody>
+</table>
+
+
+<h3>Why qak</h3>
+		As we said the project needs to be distributed, heterogeneous and lots of different components need to cooperate as Actors, services, pojos or normal variables. <br>
+	Java is not built for the purpose of representing these kind of elements, it was born as a general-purpose programming language and, so, it lacks the expressive power to state the concepts of distributed systems (actors, services, ...) directly: expressing them in plain Java would require large amounts of boilerplate code that would pollute the representation of the elements. <br> <br>
+	Fortunately, our software house, has already developed in-house a modelling language designed for this purpose, QAK, which lets us express these concepts in a simple, compact and expressive way, turning them into first-class entities of the language.
+	<br> <br></br>
+	In short, how qak works: it is a modelling language built around QActors. The "Q" stands for "quasi", because the actor is the reference paradigm but the same construct can also play other roles (a nano-service inside a single JVM, a microservice over TCP or MQTT, a CoAP resource). Each QActor is modelled as a Moore finite-state machine: its outputs depend on its current state, and its transitions can be driven both by autonomous internal decisions and by the arrival of messages. QActors interact only by exchanging messages. Underneath, qak is realized on top of Kotlin, the "k" in qak, with each QActor running as a Kotlin coroutine.
+
+<br><br><br>
+
+
+<h3>Formalization of Messages and interactions of the components inside the system:</h3>
+
+<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+<pre>
+System cargoservice
+// QAK requirements analysis
+// Made by:
+	//Alessandro Marcellini
+	//Alessandro Villani
+
+// request for cargoservice
+Request load_request : load_request(none)
+
+// reply to ioport
+Reply load_accepted   : load_accepted(SLOTID) for load_request
+Reply retrylater : retrylater(HOLDSTATE) for load_request
+Reply load_refused    : load_refused(none)    for load_request
+
+
+Context ctxcargoservice ip [host="localhost" port=8020]
+Context ctxioport       ip [host="localhost" port=8021]
+Context ctxrobot        ip [host="localhost" port=8022]
+Context ctxdevices      ip [host="localhost" port=8023]
+</pre>
+
+<h3>Formalization of Macro-components</h3>
+<br>
+<ul>
+	<li> <span style="font-weight: bold;">CONTAINER</span>: A container is a rectangular box, with a barcode label.
+					We could model it as a Plain Object (POJO) with the following attributes:
+					<ul>
+						<li> barcode: a numeric string that uniquely identifies the container;</li>
+						<li> length (LC): a integer value that represents the length of the container;</li>
+						<li> width (WC): a integer value that represents the width of the container.</li>
+					</ul>
+					<br>
+    
+    <p>
+        <strong>Questions to Client:</strong>
+        <ol>
+            <li>Which is the length of the barcode of a container?</li>
+            <li>Can we assume the dimensions of a container as integers?</li>
+        </ol>
+        <br>
+        <strong>Answers from Client:</strong>
+        <ol>
+            <li>The barcode of a container is 10 digits long.</li>
+            <li>Yes, we can assume the dimensions of a container as integers.</li>
+        </ol>
+    </p>
+
+	<p><b>Note:</b> we could avoid representing the container as its features are not really important for the implementation of the system. For representation purposes and for completeness of the analysis of the requirements only we still represent and formalize what a container is in our system.</p>
+
+
+    <br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+	public interface IContainer {
+		public String getBarcode();
+		public int getLength();
+		public int getWidth();
+	}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">SLOT</span>: A slot is a rectangular area, with the same length (LC) and width (WC) dimensions of a container, and can be occupied by a container.
+			It is modeled as a Plain Java Object (POJO) with the following attributes:
+			<ul>
+				<li> id: a number from 0 to 5 that uniquely identifies the slot
+						If the id equals 0, the slot represents a generic area of the hold.
+						If the id equals 1,2,3,4, the slot represents one of the four areas of the hold reserved to store a container.
+						If the id equals 5, the slot represents the area of the hold reserved to temporarily store a container, before to place it in one of the slots1-4.
+				</li>
+				<li> content: a reference to the container currently occupying the slot, or null if the slot is empty</li>
+			</ul>
+			<br>
+			<span style="font-weight: bold;">Note:</span> ISlot is an extension of the more generic ICell. This is made to facilitate the representation of the hold (next formalized element in the document).
+	
+
+    <br>
+    <p>
+        <strong>Questions to Client:</strong>
+        <ol>
+            <li>Where is the marker device positioned? Do we need to consider it embedded in slot5?</li>
+        </ol>
+        <br>
+        <strong>Answers from Client:</strong>
+        <ol>
+            <li>The functioning of the marker device can be emulated by a standard delay of 5 seconds in the container movement logic.</li>
+        </ol>
+    </p>
+    
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+    
+public enum CellType {
+	FREE, OBSTACLE, HOME, IOPORT, SLOT
+}
+
+public interface ICell {
+	public CellType getType(); // gets the type of the cell
+}
+
+public interface ISlot extends ICell {
+	public int getId(); // from 1 to 5
+	public IContainer getContent();
+	public void setContent(IContainer container);
+}
+
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">STATE OF THE HOLD</span>: The state of the hold describes the current state of the hold, and it is shown on the display of the IOPort.
+		 It is modeled as an enumerative type with the following values:
+			<ul>
+				<li> OUT_OF_SERVICE: the hold is out of service;</li>
+				<li> ENGAGED: the hold is engaged in a load operation;</li>
+				<li> DISENGAGED: the hold is disengaged from a load operation.</li>
+			</ul>
+			<br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+public enum HoldState {
+	ENGAGED, DISENGAGED, OUT_OF_SERVICE
+}
+
+	</pre>
+	
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">HOLD</span>: A hold is a rectangular area where the cargorobot can move containers, with 4 slots reserved to permanently store containers and one slot reserved for temporary storage until the marker device has done its job. <br> <br>		
+		The Hold can be modeled as Plain Java Object (POJO) with the following attributes:
+		<ul>
+			<li>a logical grid of cells of size LC x WC, where each one of them is a Cell or a Slot identified by a pair of coordinates (i,j);</li>
+			<li> state of the hold.</li>
+		</ul>
+		<br>
+
+
+	<svg width="900" height="650">
+	
+		<defs>
+	<marker id="arrow" markerWidth="10" markerHeight="10"
+					refX="8" refY="3" orient="auto">
+	<polygon points="0 0, 8 3, 0 6"/>
+	</marker>
+	</defs>
+	
+		<!-- Griglia -->
+	<g>
+	<!-- verticali -->
+	<line class="grid" x1="50" y1="50" x2="50" y2="600"/>
+	<line class="grid" x1="100" y1="50" x2="100" y2="600"/>
+	<line class="grid" x1="150" y1="50" x2="150" y2="600"/>
+	<line class="grid" x1="200" y1="50" x2="200" y2="600"/>
+	<line class="grid" x1="250" y1="50" x2="250" y2="600"/>
+	<line class="grid" x1="300" y1="50" x2="300" y2="600"/>
+	<line class="grid" x1="350" y1="50" x2="350" y2="600"/>
+	<line class="grid" x1="400" y1="50" x2="400" y2="600"/>
+	<line class="grid" x1="450" y1="50" x2="450" y2="600"/>
+	<line class="grid" x1="500" y1="50" x2="500" y2="600"/>
+	<line class="grid" x1="550" y1="50" x2="550" y2="600"/>
+	<line class="grid" x1="600" y1="50" x2="600" y2="600"/>
+	<line class="grid" x1="650" y1="50" x2="650" y2="600"/>
+	<line class="grid" x1="700" y1="50" x2="700" y2="600"/>
+	
+			<!-- orizzontali -->
+	<line class="grid" x1="50" y1="50" x2="700" y2="50"/>
+	<line class="grid" x1="50" y1="100" x2="700" y2="100"/>
+	<line class="grid" x1="50" y1="150" x2="700" y2="150"/>
+	<line class="grid" x1="50" y1="200" x2="700" y2="200"/>
+	<line class="grid" x1="50" y1="250" x2="700" y2="250"/>
+	<line class="grid" x1="50" y1="300" x2="700" y2="300"/>
+	<line class="grid" x1="50" y1="350" x2="700" y2="350"/>
+	<line class="grid" x1="50" y1="400" x2="700" y2="400"/>
+	<line class="grid" x1="50" y1="450" x2="700" y2="450"/>
+	<line class="grid" x1="50" y1="500" x2="700" y2="500"/>
+	<line class="grid" x1="50" y1="550" x2="700" y2="550"/>
+	<line class="grid" x1="50" y1="600" x2="700" y2="600"/>
+	</g>
+	
+		<!-- Assi -->
+	<line class="axis" x1="50" y1="50" x2="760" y2="50"/>
+	<line class="axis" x1="50" y1="50" x2="50" y2="620"/>
+	
+		<text x="770" y="55" font-size="18">X</text>
+	<text x="35" y="635" font-size="18">Y</text>
+	
+		<!-- Stanza -->
+	<rect class="room"
+			x="100"
+			y="100"
+			width="520"
+			height="380"/>
+	
+		<!-- HOME -->
+	<rect class="device"
+			x="105"
+			y="105"
+			width="60"
+			height="28"/>
+	<text class="label"
+			x="116"
+			y="124">HOME</text>
+	
+		<!-- SONAR -->
+	<rect class="device"
+			x="230"
+			y="105"
+			width="70"
+			height="28"/>
+	<text class="label"
+			x="243"
+			y="124">SONAR</text>
+	
+		<!-- IOPORT -->
+	<rect class="device"
+			x="110"
+			y="440"
+			width="80"
+			height="28"/>
+	<text class="label"
+			x="122"
+			y="459">IOPORT</text>
+	
+		<!-- SLOT1 -->
+	<rect class="slot"
+			x="220"
+			y="180"
+			width="45"
+			height="45"/>
+	<text x="210" y="175">SLOT1</text>
+
+		<!-- SLOT2 -->
+	<rect class="slot" x="350" y="180" width="45" height="45"/>
+	<text x="340" y="175">SLOT2</text>
+
+		<!-- SLOT3 -->
+	<rect class="slot" x="220" y="300" width="45" height="45"/>
+	<text x="210" y="295">SLOT3</text>
+
+		<!-- SLOT4 -->
+	<rect class="slot" x="350" y="300" width="45" height="45"/>
+	<text x="340" y="295">SLOT4</text>
+
+		<!-- SLOT5 -->
+	<rect class="slot" x="470" y="240" width="45" height="45"/>
+	<text x="460" y="235">SLOT5</text>
+
+	</svg>
+
+	<br>
+	<br>
+
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+public interface IHold {
+	public ICell[][] getHold();
+	public ICell getCell(int i, int j);
+	public HoldState getState();
+	public void setState(HoldState state);
+	public void setCell(int i, int j, ICell cell);
+	public ISlot nextFreeSlot(); // if returns null, all slots are taken
+}
+
+
+
+public class Hold implements IHold {
+	
+	private ICell[][] hold = new ICell[7][7];
+	private HoldState currentState = HoldState.DISENGAGED;
+
+	public Hold() {
+
+	    for (int i = 0; i < 7; i++) {
+	        for (int j = 0; j < 7; j++) {
+	            hold[i][j] = new Cell(CellType.FREE);
+	        }
+	    }
+
+	    // HOME
+	    hold[0][0] = new Cell(CellType.HOME);
+
+	    // SLOT
+	    hold[2][1] = new Slot(1);
+	    hold[5][1] = new Slot(2);
+	    hold[2][3] = new Slot(3);
+	    hold[5][3] = new Slot(4);
+	    hold[6][2] = new Slot(5);
+
+	    // OSTACOLI
+	    hold[3][1] = new Cell(CellType.OBSTACLE);
+	    hold[4][1] = new Cell(CellType.OBSTACLE);
+	    hold[3][3] = new Cell(CellType.OBSTACLE);
+	    hold[4][3] = new Cell(CellType.OBSTACLE);
+	    hold[5][2] = new Cell(CellType.OBSTACLE);
+
+	    // IOPORT
+	    hold[1][6] = new Cell(CellType.IOPORT);
+	}
+
+	// ... implement the methods of the IHold 
+}
+	</pre>
+	</li>
+
+	<br>
+
+	<li> <span style="font-weight: bold;">CARGOROBOT</span>: The cargorobot is a differential drive robot (DDR) that can move containers across the hold. It can move forward, backward, rotate, and stop; these actions are meant as commands.
+	<br><br>
+	It is provided directly by the client, and therefore will not be built from scratch by us.
+		The actual implementations of the robot and the robotservice provided by the client will be throughly discussed and analyized in order to establish what implementation is the best for our needs and if it needs to be slightly modifed in the problem analysis. <br>
+	<br>What follows is a simplified representation of its role in the system, enough to fix how cargoservice interacts with the robot, without committing here to a concrete implementation. <br>
+	<br><br>
+	The robot is not controlled directly. It is simulated by a distributed service that is the only component actually actuating the DDR. <br>
+	The access to it is layered:
+	<ul>
+		<li>VirtualRobot (WEnv): the simulator; it receives concrete movement commands (cril) over HTTP (synchronous) and WebSocket (asynchronous), and streams back the robot/sensor state.</li>
+		<li>RobotObj: a Java object that hides the network, translating method calls into cril commands sent to VirtualRobot.</li>
+		<li>robotservice26: a service (QActor) that wraps RobotObj and re-exposes robot control as message-based operations (abstract aril commands such as move / cmd / step) plus streamed events (e.g. sonardata).</li>
+	</ul>
+
+	<strong>Note:</strong><br>
+	In our system, <span style="font-weight: bold;">cargoservice</span> communicates only with robotservice, by exchanging messages: it never talks to the actual robot over the network directly. It reuses the robotservice service provided by the client and sees the robot purely as a message-driven service, sending the movement requests needed to carry a container (IOPort -> slot5 -> reserved slot) and, if needed, subscribing to the robot's streamed state.
+	<br><br>
+	The committente actually supplies more than one way to drive the robot (the RobotObj Java object directly, or the robotservice26 actor service, both on top of the VirtualRobot simulator). Choosing the most suitable one, deciding whether it must be adapted for this project, and deciding whether cargoservice should depend on robotservice26 directly or through an abstraction, are design concerns: they are deferred to the next sprint, in the Problem analysis.
+	<br>
+	Reference implementation provided by the committente: <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#ROBOTSERVICE26">Protobook — ROBOTSERVICE26</a>.
+	<br>
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+		
+	QActor robotservice context ctxrobot {
+		State s0 initial {
+			println("[ROBOT SERVICE] initialized") color magenta
+		}
+		
+		
+		State work {
+			println("[ROBOT SERVICE] commanding the cargorobot to pickup the container from ioport") color magenta
+			delay 5000
+			println("[ROBOT SERVICE] commanding the cargorobot to move the container to slot5") color magenta
+			delay 5000
+			println("[ROBOT SERVICE] waiting for container to be scanned") color magenta
+			delay 5000
+			println("[ROBOT SERVICE] commanding the cargorobot to move the container from slot 5 to the designed slot") color magenta
+			delay 5000
+			println("[ROBOT SERVICE] commanding the cargorobot to move back to HOME") color magenta
+		}
+		Goto waiting
+	}
+
+	QActor cargorobot context ctxrobot {
+		State s0 initial {
+			println("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice") color yellow
+		}
+	}
+	</pre>
+	</li>
+
+	<br>
+	<li> <span style="font-weight: bold;">SONAR</span>:
+
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+
+	// The sonar cannot sense on its own. When the user engages the system and
+	// places the container, cargoservice informs the sonar of its position (X,Y).
+	// The sonar computes the distance D and decides:
+	//   - D > DFREE sustained 3s => sonar failure => Out of service.
+
+
+
+	Context ctxcargoservice ip [host="localhost" port=8020]
+	Context ctxdevices      ip [host="localhost" port=8023]
+
+	QActor sonar context ctxdevices {
+		[#
+			val DFREE  = 3
+			var CurrD = 0
+		#]
+		State waiting initial {
+			println("[SONAR] ready!") color yellow
+		}
+		Goto measureDistance
+
+		
+		State measureDistance {
+			println("[SONAR] measuring distance...") color yellow
+			[# CurrD = Random.nextInt(0, 6) #]
+			if [# currD > DFREE #] {
+				delay 3000 // if after 3 seconds it is still > currD
+				[# CurrD = Random.nextInt(0, 6) #]
+				if [# currD > DFREE #] {
+                    println("[SONAR] sonar error, hold is out of service")
+				}
+			}
+			else {
+				if [# CurrD < DFREE / 2 #] {
+					println("[SONAR] measured distance acceptable, container has been positioned.")
+				}
+			}
+		}
+		Goto waiting
+	}
+	</pre>
+	</li>
+
+	<br>
+
+	<br>
+
+	<li> <span style="font-weight: bold;">I/O PORT</span>: A <b>composite component </b> that groups the pushbutton, the display and the sonar into the single web-gui interface between the customer and cargoservice.
+	It is the system's entry point for the client to interact with the system.
+
+	<br><br>
+
+	<span style="font-weight: bold;">PUSH BUTTON</span>: An input device, inside the I/O PORT, that can be pressed by the customer to send a load request to the system.
+	It is an <b>active</b> entity (an event source): a physical press is turned into a loadRequest that cargoservice reacts to. It is modelled inside the ioport Actor.
+
+	<br>
+	<br>
+	<span style="font-weight: bold;">DISPLAY</span>: A <b>passive</b> output device that shows the current state of the hold and the text messages ('Service working', 'Out of service').
+	It is modelled as a POJO with an interface, injected into the business logic so the logic does not depend on a concrete display.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+	public interface IDisplay {
+		public void setState(String msg);
+		public void setBookedSlot(int id);
+
+		public String getState();
+		public int getBookedSlotId();
+
+	}
+	</pre>
+
+	<br>
+	The Actual IOPort logic is represented as a QActor, embedding these 2 elements.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+
+	// request for cargoservice
+	Request load_request : load_request(none)
+
+	// reply to ioport
+	Reply load_accepted   : load_accepted(SLOTID) for load_request
+	Reply retrylater : retrylater(HOLDSTATE) for load_request
+	Reply load_refused    : load_refused(none)    for load_request
+
+
+	QActor ioport context ctxioport {
+		
+		[#
+			IDisplay display = new Display();
+		#]
+		
+		State s0 initial {
+
+			// simulating load request from push button
+			// disabled in Sprint 0: the test client is the only actor that drives
+			// cargoservice, so that TP0.1 is not raced by a spontaneous ioport request
+			// delay 10000
+			request cargoservice -m load_request : load_request(none)
+
+		}
+		Goto work
+
+
+		State work {
+			println("[IOPORT] customer pressed pushbutton")
+			request cargoservice -m load_request : load_request(none)
+		}
+		Transition t0
+			whenReply load_accepted -> accepted
+			whenReply retrylater -> retrylater
+			whenReply load_refused -> refused
+
+		State accepted {
+			println("[IOPORT] DISPLAY: load_accepted received") color green
+			
+			onMsg( load_accepted : load_accepted(slotId)) {
+				[# display.setBookedSlot(slotId) #]
+				[# display.setState("load accepted, system enganged") #]
+			}
+			
+		}
+		Goto work
+
+
+		State retrylater {
+			println("[IOPORT] DISPLAY: retrylater received") color yellow
+			
+			
+			onMsg( retrylater : retrylater(CurrentHoldState)) {
+				if [# CurrentHoldState == HoldState.ENGAGED #] {
+					[# display.setState("retry later, another request is being served...") #]
+				}
+				else {
+					[# display.setState("retry later, the hold is currently out of service...") #]
+				}
+			}
+		}
+		Goto work
+
+		State refused {
+			println("[IOPORT] DISPLAY: load_refused received, all slots are occupied") color red
+			
+			[# display.setState("refused, the hold' slots are all occupied.") #]
+		}
+		Goto work
+	}
+
+	</pre>
+	</li>
+
+	<br>
+
+	<li> <span style="font-weight: bold;">LED</span>: A <b>passive</b> output device. While the system is engaged it must blink for the customer window (~30s), then stop when the container is placed in the sensor area or the window expires.
+	Being passive, the LED does not own the timing: the 30s window is the same timeout that turns the engaged system into disengaged, owned by cargoservice, which starts and stops the blinking.
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+	QActor led context ctxdevices {
+	 State s0 initial {
+	 	
+	 }
+	 Goto work
+	 
+	 State work{
+	 	println("[LED] switching led off or on based on the hold state") color green
+	 }
+	}
+
+	</pre>
+	</li>
+
+	<br>
+
+	<li> <span style="font-weight: bold;">CARGOSERVICE</span>: This service needs to be built from scratch. <br>
+	It hosts the <b>business logic of the actual application</b>: it receives the load request from the pushbutton, produces the answer (retrylater / reject / the name of the reserved slot), manages the engagement and the 30s window, drives the LED and the display, informs the sonar of the container position, and commands the cargorobot (IOPort &rarr; slot5 &rarr; reserved slot).
+	It has no passive data nature: it is an <b>active</b> entity whose lifecycle is a state machine. Its behaviour (states, transitions, timeouts) is <em>not</em> a requirement-analysis concern and is formalized in <b>Problem analysis</b>; here it is only named and its responsibilities and interactions delimited.
+	
+	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargoservice_sprint0.qak" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+	<pre>
+	// request for cargoservice
+	Request load_request : load_request(none)
+
+	// reply to ioport
+	Reply load_accepted   : load_accepted(SLOTID) for load_request
+	Reply retrylater : retrylater(HOLDSTATE) for load_request
+	Reply load_refused    : load_refused(none)    for load_request
+
+
+	QActor cargoservice context ctxcargoservice {
+
+		[#
+			var hold = it.unibo.hold.Hold()
+		#]
+
+
+		State s0 initial {
+			println("[CARGO SERVICE] started") color blue
+		}
+		Goto waiting
+
+		State waiting {
+			println("[CARGO SERVICE] DISENGAGED: waiting for load_requests") color green
+		}
+		Transition t0
+			whenRequest load_request -> handle_load_request
+
+		State handle_load_request {
+			println("[CARGO SERVICE] evaluating load request...") color cyan
+			
+			if [# ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED #] { // another container is being moved, retry later
+				println("[CARGO SERVICE] another container is being moved, replying with RETRY LATER.") color cyan
+				replyTo load_request with retrylater : retrylater(CurrentHoldState)
+			}
+			
+			if [# (var SlotToFill = hold.nextFreeSlot()) == null #] { // all slots are taken, refuse request
+				println("[CARGO SERVICE] all slots are taken, replying with REFUSED.") color cyan
+				replyTo load_request with load_refused : load_refused(none)
+			}
+			else {
+				println("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.") color cyan
+				[# hold.setState(HoldState.ENGAGED) #]
+				[# var intSlotToFill = SlotToFill.getId() #]
+				replyTo load_request with load_accepted : load_accepted(intSlotToFill)
+				
+				delay 5000 // simulating sonar signal reception, just for requirements analysis purposes
+				// in the real case it will wait for the event "containerPositioned"
+				
+				// if the sonar goes into fault then switch the hold state to "Out of service"
+				// [# hold.setState(HoldState.OUTOFSERVICE) #]
+				
+				
+				println("Make the robot work to load the container in the designated spot")
+				// when the robot has done its work Goto switch to disengaged
+			}
+		}
+
+		
+		State switch_to_disengaged {
+			[# hold.setState(HoldState.DISENGAGED) #]
+		}
+		Goto waiting
+
+	}
+	</pre>
+
+
+	</li>
+
+</ul>
+</div>
+
+<h2>Test plans</h2>
+<div class="remark">
+	The testplan is based on the executable model cargo_service_sprint0_mock.qak. It can be found <a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargo_service_sprint0_mock.qaktt">here</a>
+	<br>
+	<br>
+	The Sprint 0 requirements describe only the behaviour that cargoservice must expose in
+	response to a load request, without saying anything about how its collaborators or its
+	internal logic are implemented. The test plan is therefore limited to the functional cases
+	that can be deduced directly from the requirements and that are already captured in our
+	model: the three possible answers to a load request, that is <b>load_accepted</b>,
+	<b>load_refused</b> and <b>retrylater</b>.
+	<br><br>
+
+	To run a case automatically we need to bring the system into a known starting condition and
+	then read the answer it produces. Reading the answer is straightforward, because it travels
+	back on the same request/reply channel that a test client can open towards cargoservice.
+	Preparing the starting condition is not always possible in this sprint: the state of the hold
+	(its occupancy and whether it is disengaged, engaged or out of service) lives inside
+	cargoservice and cannot yet be set from the outside. For this reason only the case whose
+	starting condition coincides with the natural startup state of the system, an empty hold with
+	the hold disengaged, can be checked automatically now. The other two cases are described here
+	as well, but their automation is postponed to Sprint 1, when cargoservice will be made
+	<b>observable</b> and its state controllable from a test.
+	<br><br>
+
+	All tests use cargoservice as the component under test, reachable on its context
+	ctxcargoservice at host localhost and port 8020. The test client plays the role of the IOPort
+	and sends the request load_request(none), then reads the reply.
+	<br><br>
+
+	<ol>
+		<li>
+			<b>Load accepted on an empty hold.</b>
+			With cargoservice started, the hold empty and its state disengaged, the test sends a
+			single load_request. The expected answer is load_accepted carrying the identifier of a
+			reserved slot, whose value must be one of the four storage slots (1 to 4). No further
+			answer must be produced for the same request. This is the only case automated in
+			Sprint 0; the corresponding code is available in the file
+			<a href="../test/it/unibo/test/TestPlanSprint0.kt">TestPlanSprint0.kt</a>.
+		</li>
+		<br>
+		<li>
+			<b>Load refused when the hold is full.</b>
+			With the hold disengaged but all four slots already occupied, so that no free slot is
+			available, the test sends a load_request. The expected answer is load_refused, and the
+			state of the hold must remain disengaged. This case is postponed to Sprint 1, because it
+			requires the ability to preset a full hold from the test.
+		</li>
+		<br>
+		<li>
+			<b>Retry later when the system is busy.</b>
+			With the hold engaged because a previous request is still being served, and with at least
+			one free slot, the test sends a second load_request. The expected answer is
+			retrylater reporting the engaged state. This case is also postponed to Sprint 1, as
+			it needs both a preset hold state and a controllable engagement window.
+		</li>
+	</ol>
+
+	<br>
+	Writing the first case as "exactly one answer" also serves to reveal a defect in the current
+	handle_load_request logic: its three cases are written as separate, sequential checks rather
+	than as mutually exclusive alternatives, so after replying with retrylater the execution
+	continues into the next check and a single request may produce a second answer. The correction,
+	using mutually exclusive branches, is scheduled for Sprint 1.
+
+	<br><br>
+	<b>Automated test source (TP0.1).</b> The code below is the JUnit test that plays the role of the
+	IOPort boundary: it opens a TCP client towards ctxcargoservice on localhost:8020, sends the
+	modelled load_request(none), and asserts the specific reply. It is deliberately written so that
+	a wrong branch (load_refused / retrylater) turns the test red.
+	<pre>
+package it.unibo.test
+
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import unibo.basicomm23.interfaces.Interaction
+import unibo.basicomm23.tcp.TcpClientSupport
+import unibo.basicomm23.utils.CommUtils
+
+class TestPlanSprint0 {
+
+    private val HOST = "localhost"
+    private val PORT = 8020            // ctxcargoservice, from cargoservice_sprint0.qak
+    private var conn: Interaction? = null
+
+    @Before
+    fun setup() {
+        CommUtils.outcyan("Connecting to cargoservice ($HOST:$PORT)")
+        try {
+            conn = TcpClientSupport.connect(HOST, PORT, 10)
+        } catch (e: Exception) {
+            fail("TCP connection error: make sure the cargoservice server is running on $HOST:$PORT. ${e.message}")
+        }
+    }
+
+    @After
+    fun teardown() {
+        conn?.close()
+        CommUtils.outcyan("Connection closed")
+    }
+
+    // TP0.1 - happy path. Asserts the SPECIFIC expected reply, not merely
+    // "one of the three replies", so a wrong branch turns the test red.
+    @Test
+    fun testLoadAcceptedOnEmptyHold() {
+        CommUtils.outmagenta("TP0.1: send load_request on an empty hold, expect load_accepted(slot 1..4)")
+        try {
+            // request envelope built from the model:
+            // msg(msgId, msgType, sender, receiver, content, seqNumber)
+            val requestMsg =
+                "msg(load_request,request,testunit,cargoservice,load_request(none),1)"
+
+            val reply = conn!!.request(requestMsg)
+            CommUtils.outgreen("Reply from cargoservice: $reply")
+            assertNotNull("No reply received from cargoservice", reply)
+
+            val body = reply.toString()
+
+            // Then: must be a load_accepted, and NOT a refused/retrylater
+            assertTrue(
+                "Expected load_accepted but got: $body",
+                body.contains("load_accepted")
+            )
+            assertTrue(
+                "Unexpected extra/other reply mixed in: $body",
+                !body.contains("load_refused") &amp;&amp; !body.contains("retrylater")
+            )
+
+            // And the reserved slot id must be one of the four storage slots 1..4
+            val slotId = extractSlotId(body)
+            assertNotNull("Could not read the reserved slot id from: $body", slotId)
+            assertTrue(
+                "Reserved slot id out of range (expected 1..4), got: $slotId",
+                slotId!! in 1..4
+            )
+        } catch (e: Exception) {
+            fail("Test failed during execution: ${e.message}")
+        }
+    }
+
+    // Extracts the integer argument of load_accepted(&lt;id&gt;) from the reply text.
+    private fun extractSlotId(reply: String): Int? {
+        val m = Regex("""load_accepted\(\s*(\d+)\s*\)""").find(reply) ?: return null
+        return m.groupValues[1].toIntOrNull()
+    }
+}
+	</pre>
+
+</div>
+
+
+<h2>Sprint1 Goal</h2>
+<div class="remark">
+
+The goal of Sprint 1 is to create an executable prototype of the cargo service that implements the core business logic (loading and moving of the container), starting from the user load request
+up to the the container placement in the reserved slot, without worring about other small details like the Led blinking, the out of service possibility for the hold or actually placing physical stuff on top of a PICO W (simulating these elements).
+<br><br>
+After the competion of sprint1 the system will be able to:
+<ol>
+	<li>Process load requests from the user, responding (with load_accepted, retry_later or load_refused) accordingly with the current state of the hold;</li>
+	<li>Make the robot move across the hold to implement the container movement logic;</li>
+	<li>Have a mock (simulation) of the devices of the ioport. The pushbutton will send messages to the system as the user would while the sonar will simulate the measuring of the distance when it's time to do so;</li>
+	<li>The sonar outofservice logic and the blinking of the led are left for another sprint.</li>
+</ol>
+
+
+</div>
+
+<div style="background-color:rgba(86, 56, 253, 0.9); width:100%;text-align:left;color:white">
+By Marcellini Alessandro email: alessandr.marcellin2@studio.unibo.it, 
+<img src="./img/alessandro_marcellini.jpg" alt="emiglio" width="8%" height="8%">
+<br><br>
+And Villani Alessandro email: alessandro.villani4@studio.unibo.it,
+<img src="./img/alessandro_villani.jpg" alt="emiglio" width="8%" height="8%">
+<br><br>
+<a href="https://github.com/alessandromarcellini/CargoService" style="color:white" target="_blank">GIT repo: : https://github.com/alessandromarcellini/CargoService
+</a>
+</div>
+</body>
+</html>

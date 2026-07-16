@@ -57,7 +57,7 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 						CommUtils.outcyan("[CARGO SERVICE] evaluating load request...")
 						if(  ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED  
 						 ){CommUtils.outcyan("[CARGO SERVICE] another container is being moved, replying with RETRY LATER.")
-						answer("load_request", "load_retrylater", "load_retrylater(CurrentHoldState)"   )  
+						answer("load_request", "retrylater", "retrylater(CurrentHoldState)"   )  
 						}
 						if(  (var SlotToFill = hold.nextFreeSlot()) == null  
 						 ){CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
@@ -69,6 +69,7 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 						  var intSlotToFill = SlotToFill.getId()  
 						 answer("load_request", "load_accepted", "load_accepted(intSlotToFill)"   )  
 						 delay(5000) 
+						 forward("checkMeasurement", "checkMeasurement(none)" ,"sonar" ) 
 						 forward("start_working", "start_working(SlotToFill)" ,"robotservice" ) 
 						 }
 						//genTimer( actor, state )

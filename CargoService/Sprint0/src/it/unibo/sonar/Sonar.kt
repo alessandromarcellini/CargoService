@@ -41,9 +41,9 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t02",targetState="checkMeasurement",cond=whenEvent("checkMeasurement"))
+					 transition(edgeName="t02",targetState="measureDistance",cond=whenDispatch("checkMeasurement"))
 				}	 
-				state("checkMeasurement") { //this:State
+				state("measureDistance") { //this:State
 					action { //it:State
 						CommUtils.outyellow("[SONAR] measuring distance...")
 						 CurrD = Random.nextInt(0, 6)  
@@ -51,13 +51,12 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 						 ){delay(3000) 
 						 CurrD = Random.nextInt(0, 6)  
 						if(  currD > DFREE  
-						 ){CommUtils.outblack("[SONAR] send message to cargoservice that the hold is out of service")
-						emit("outOfService", "outOfService(none)" ) 
+						 ){CommUtils.outblack("[SONAR] sonar error, hold is out of service")
 						}
 						}
 						else
 						 {if(  CurrD < DFREE / 2  
-						  ){emit("containerPositioned", "containerPositioned(none)" ) 
+						  ){CommUtils.outblack("[SONAR] measured distance acceptable, container has been positioned.")
 						 }
 						 }
 						//genTimer( actor, state )

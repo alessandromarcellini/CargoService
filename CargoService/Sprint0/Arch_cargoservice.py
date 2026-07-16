@@ -35,9 +35,6 @@ with Diagram('cargoserviceArch', show=False, outformat='png', graph_attr=graphat
      with Cluster('ctxdevices', graph_attr=nodeattr):
           sonar=Custom('sonar','./qakicons/symActorWithobjSmall.png')
           led=Custom('led','./qakicons/symActorWithobjSmall.png')
-     sys >> Edge( label='checkMeasurement', **evattr, decorate='true', fontcolor='darkgreen') >> sonar
-     sonar >> Edge( label='outOfService', **eventedgeattr, decorate='true', fontcolor='red') >> sys
-     sonar >> Edge( label='containerPositioned', **eventedgeattr, decorate='true', fontcolor='red') >> sys
-     ioport >> Edge(color='magenta', style='solid', decorate='true', label='<load_request<font color="darkgreen"> load_accepted load_retrylater load_refused</font> &nbsp; >',  fontcolor='magenta') >> cargoservice
+     cargoservice >> Edge(color='blue', style='solid',  decorate='true', label='<checkMeasurement &nbsp; >',  fontcolor='blue') >> sonar
      cargoservice >> Edge(color='blue', style='solid',  decorate='true', label='<start_working &nbsp; >',  fontcolor='blue') >> robotservice
 diag

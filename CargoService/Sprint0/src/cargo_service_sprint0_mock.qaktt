@@ -13,14 +13,9 @@ Reply retrylater : retrylater(HOLDSTATE) for load_request
 Reply load_refused    : load_refused(none)    for load_request
 
 
-Context ctxcargoservice ip [host="localhost" port=8020] // context to run the cargoservice logic
-Context ctxioport       ip [host="localhost" port=8021] // context to run the ioport
-Context ctxrobot        ip [host="localhost" port=8022] // context to run the actual robot
-Context ctxdevices      ip [host="localhost" port=8023] // context to run the PICOW ioport components
+Context ctxmock ip [host="localhost" port=8020]
 
-
-
-QActor cargoservice context ctxcargoservice {
+QActor cargoservice context ctxmock {
 
     [#
         var hold = it.unibo.hold.Hold()
@@ -77,7 +72,7 @@ QActor cargoservice context ctxcargoservice {
 
 }
 
-QActor robotservice context ctxrobot {
+QActor robotservice context ctxmock {
 	State s0 initial {
 		println("[ROBOT SERVICE] initialized") color magenta
 	}
@@ -96,14 +91,14 @@ QActor robotservice context ctxrobot {
 	Goto waiting
 }
 
-QActor cargorobot context ctxrobot {
+QActor cargorobot context ctxmock {
 	State s0 initial {
 		println("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice") color yellow
 	}
 }
 
 
-QActor sonar context ctxdevices {
+QActor sonar context ctxmock {
 	[#
 		val DFREE  = 3
 		var CurrD = 0
@@ -135,7 +130,7 @@ QActor sonar context ctxdevices {
 
 
 
-QActor ioport context ctxioport {
+QActor ioport context ctxmock {
 	
 	[#
 		IDisplay display = new Display();
@@ -155,7 +150,7 @@ QActor ioport context ctxioport {
 
 	State work {
 		println("[IOPORT] customer pressed pushbutton")
-		request cargoservice -m load_request : load_request(none)
+		//request cargoservice -m load_request : load_request(none)
 	}
 	
 	Transition t0
@@ -199,7 +194,7 @@ QActor ioport context ctxioport {
 }
 
 
-QActor led context ctxdevices {
+QActor led context ctxmock {
 	 State s0 initial {
 	 	
 	 }
