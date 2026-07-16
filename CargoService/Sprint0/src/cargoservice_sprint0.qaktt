@@ -93,7 +93,6 @@ QActor robotservice context ctxrobot {
 		delay 5000
 		println("[ROBOT SERVICE] commanding the cargorobot to move back to HOME") color magenta
 	}
-	Goto waiting
 }
 
 QActor cargorobot context ctxrobot {

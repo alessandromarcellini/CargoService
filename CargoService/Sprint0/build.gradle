@@ -16,18 +16,18 @@ plugins {
 version '1.0'
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 }
 kotlin {
   jvmToolchain {
-    languageVersion.set(JavaLanguageVersion.of("21"))
+    languageVersion.set(JavaLanguageVersion.of("17"))
   }
 }
 
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
-    flatDir {   dirs '../unibolibs'	 }
+    flatDir {   dirs '../../unibolibs'	 }
 }
 
 dependencies {
@@ -107,6 +107,14 @@ dependencies {
 // Gradle default 'src/test/kotlin'), so make the test source set point there,
 // otherwise './gradlew test' compiles nothing and passes vacuously.
 sourceSets {
+    // The qak-generated main sources live directly under 'src' (e.g.
+    // src/it/unibo/ctxmock/MainCtxmock.kt), NOT under the Gradle default
+    // src/main/kotlin. Without this, MainCtxmockKt is never compiled and
+    // 'gradlew run' fails with ClassNotFoundException.
+    main {
+        java   { srcDir 'src'; srcDir 'src-gen'; exclude 'main/**' }
+        kotlin { srcDir 'src'; srcDir 'src-gen'; exclude 'main/**' }
+    }
     test {
         kotlin { srcDirs = ['test'] }
     }
@@ -145,7 +153,7 @@ eclipse {
 
 application {
     //Define the main class for the application.
-    mainClassName    = 'TODO'
+    mainClassName    = 'it.unibo.ctxmock.MainCtxmockKt'
 }
  
  jar {

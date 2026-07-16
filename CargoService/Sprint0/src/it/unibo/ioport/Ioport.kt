@@ -30,7 +30,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-				IDisplay display = new Display();
+				val display = Display()
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -48,16 +48,16 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t03",targetState="accepted",cond=whenReply("load_accepted"))
-					transition(edgeName="t04",targetState="retrylater",cond=whenReply("retrylater"))
-					transition(edgeName="t05",targetState="refused",cond=whenReply("load_refused"))
+					 transition(edgeName="t01",targetState="accepted",cond=whenReply("load_accepted"))
+					transition(edgeName="t02",targetState="retrylater",cond=whenReply("retrylater"))
+					transition(edgeName="t03",targetState="refused",cond=whenReply("load_refused"))
 				}	 
 				state("accepted") { //this:State
 					action { //it:State
 						CommUtils.outgreen("[IOPORT] DISPLAY: load_accepted received")
 						if( checkMsgContent( Term.createTerm("load_accepted(SLOTID)"), Term.createTerm("load_accepted(slotId)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								 display.setBookedSlot(slotId)  
+								 display.setBookedSlot(payloadArg(0).toInt())  
 								 display.setState("load accepted, system enganged")  
 						}
 						//genTimer( actor, state )
@@ -72,7 +72,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 						CommUtils.outyellow("[IOPORT] DISPLAY: retrylater received")
 						if( checkMsgContent( Term.createTerm("retrylater(HOLDSTATE)"), Term.createTerm("retrylater(CurrentHoldState)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								if(  CurrentHoldState == HoldState.ENGAGED  
+								if(  payloadArg(0) == "ENGAGED"  
 								 ){ display.setState("retry later, another request is being served...")  
 								}
 								else

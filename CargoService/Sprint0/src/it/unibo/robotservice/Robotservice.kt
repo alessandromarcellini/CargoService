@@ -39,16 +39,6 @@ class Robotservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					sysaction { //it:State
 					}	 	 
 				}	 
-				state("waiting") { //this:State
-					action { //it:State
-						CommUtils.outmagenta("[ROBOT SERVICE] waiting for commands...")
-						//genTimer( actor, state )
-					}
-					//After Lenzi Aug2002
-					sysaction { //it:State
-					}	 	 
-					 transition(edgeName="t01",targetState="work",cond=whenDispatch("start_working"))
-				}	 
 				state("work") { //this:State
 					action { //it:State
 						CommUtils.outmagenta("[ROBOT SERVICE] commanding the cargorobot to pickup the container from ioport")
@@ -65,7 +55,6 @@ class Robotservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
 				}	 
 			}
 		}

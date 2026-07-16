@@ -16,6 +16,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory 
 import org.json.simple.parser.JSONParser
 import org.json.simple.JSONObject
+import kotlin.random.Random
 
 
 //User imports JAN2024
@@ -41,16 +42,16 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t02",targetState="measureDistance",cond=whenDispatch("checkMeasurement"))
+					 transition( edgeName="goto",targetState="measureDistance", cond=doswitch() )
 				}	 
 				state("measureDistance") { //this:State
 					action { //it:State
 						CommUtils.outyellow("[SONAR] measuring distance...")
 						 CurrD = Random.nextInt(0, 6)  
-						if(  currD > DFREE  
+						if(  CurrD > DFREE  
 						 ){delay(3000) 
 						 CurrD = Random.nextInt(0, 6)  
-						if(  currD > DFREE  
+						if(  CurrD > DFREE  
 						 ){CommUtils.outblack("[SONAR] sonar error, hold is out of service")
 						}
 						}
