@@ -19,6 +19,7 @@ import org.json.simple.JSONObject
 
 
 //User imports JAN2024
+import it.unibo.Hold.*
 
 class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=false, isdynamic: Boolean=false ) : 
           ActorBasicFsm( name, scope, confined=isconfined, dynamically=isdynamic ){
@@ -30,8 +31,42 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-		        var hold = it.unibo.hold.Hold()
-		        var CurrentSlotToFillId = -1
+		    	
+		        var CurrentHoldState: HoldState = HoldState.DISENGAGED
+		        
+		        var CurrentSlotToFill: ISlot? = null
+		        
+				var IOPortX = 6
+				var IOPortY = 1
+				
+				var HomeX = 0
+				var HomeY = 0
+				
+				var Slot5X = 2
+				var Slot5Y = 6
+				
+				
+				var SlotsList: List<ISlot> = listOf(
+					Slot(1, 1, 2),
+			        Slot(2, 1, 5),
+			        Slot(3, 3, 2),
+			        Slot(4, 3, 5)
+			    )
+			    
+			    fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? {
+				    return slots.firstOrNull { slot -> slot.content == null }
+				}
+				
+				fun OccupyFirstFreeSlot(slots: List<ISlot>, container: IContainer): Boolean {
+				    val freeSlot = slots.firstOrNull { it.content == null }
+				    
+				    return if (freeSlot != null) {
+				        freeSlot.content = container
+				        true
+				    } else {
+				        false 
+				    }
+				}
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -56,21 +91,22 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				state("handle_load_request") { //this:State
 					action { //it:State
 						CommUtils.outcyan("[CARGO SERVICE] evaluating load request...")
-						if(  ( var CurrentHoldState = hold.getState()) != HoldState.DISENGAGED  
+						if(  CurrentHoldState != HoldState.DISENGAGED  
 						 ){CommUtils.outcyan("[CARGO SERVICE] another container is being moved or the hold is 'out of service', replying with RETRY LATER.")
-						answer("load_request", "load_retrylater", "load_retrylater(CurrentHoldState)"   )  
+						answer("load_request", "load_retrylater", "load_retrylater($CurrentHoldState)"   )  
 						forward("cargoservice_goto_waiting", "cargoservice_goto_waiting(none)" ,name ) 
 						}
-						if(  (var SlotToFill = hold.nextFreeSlot()) == null  
+						 CurrentSlotToFill = FindFirstFreeSlot(SlotsList)  
+						if(  CurrentSlotToFill == null  
 						 ){CommUtils.outcyan("[CARGO SERVICE] all slots are taken, replying with REFUSED.")
 						answer("load_request", "load_refused", "load_refused(none)"   )  
 						forward("cargoservice_goto_waiting", "cargoservice_goto_waiting(none)" ,name ) 
 						}
 						else
 						 {CommUtils.outcyan("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.")
-						  hold.setState(HoldState.ENGAGED)  
-						  CurrentSlotToFillId = SlotToFill.getId()  
-						 answer("load_request", "load_accepted", "load_accepted(CurrentSlotToFillId)"   )  
+						  CurrentHoldState = HoldState.ENGAGED  
+						  var CurrentSlotToFillId = CurrentSlotToFill!!.id  
+						 answer("load_request", "load_accepted", "load_accepted($CurrentSlotToFillId)"   )  
 						 forward("cargoservice_goto_accept_load_request", "cargoservice_goto_accept_load_request(none)" ,name ) 
 						 }
 						//genTimer( actor, state )
@@ -92,21 +128,95 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				 	 					  scope, context!!, "local_tout_"+name+"_accept_load_request", 30000.toLong() )  //OCT2023
 					}	 	 
 					 transition(edgeName="t03",targetState="switch_to_disengaged",cond=whenTimeout("local_tout_"+name+"_accept_load_request"))   
-					transition(edgeName="t04",targetState="move_robot",cond=whenEvent("containerPositioned"))
+					transition(edgeName="t04",targetState="go_to_ioport",cond=whenEvent("containerPositioned"))
 					transition(edgeName="t05",targetState="set_outofservice",cond=whenEvent("outOfService"))
 				}	 
-				state("move_robot") { //this:State
+				state("go_to_ioport") { //this:State
 					action { //it:State
-						 hold.setSlotOccupied(CurrentSlotToFillId)  
+						CommUtils.outmagenta("[CARGO SERVICE] Command: Moving robot to IOPort")
+						request("reachTarget", "reachTarget($IOPortX,$IOPortY)" ,"cargorobot" )  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
+					 transition(edgeName="t06",targetState="go_to_slot5",cond=whenReply("targetReached"))
+					transition(edgeName="t07",targetState="movement_failed",cond=whenReply("targetUnreachable"))
+				}	 
+				state("go_to_slot5") { //this:State
+					action { //it:State
+						CommUtils.outmagenta("[CARGO SERVICE] Command: Moving robot to Slot5")
+						request("reachTarget", "reachTarget($Slot5X,$Slot5Y)" ,"cargorobot" )  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t08",targetState="wait_checkpoint",cond=whenReply("targetReached"))
+					transition(edgeName="t09",targetState="movement_failed",cond=whenReply("targetUnreachable"))
+				}	 
+				state("wait_checkpoint") { //this:State
+					action { //it:State
+						CommUtils.outmagenta("[CARGO SERVICE] waiting for maker device delay...")
+						delay(5000) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="go_to_final_slot", cond=doswitch() )
+				}	 
+				state("go_to_final_slot") { //this:State
+					action { //it:State
+						 
+						    		var CurrentSlotToFillX = CurrentSlotToFill!!.x 
+						    		var CurrentSlotToFillY = CurrentSlotToFill!!.y 
+						CommUtils.outmagenta("[CARGO SERVICE] Command: Moving robot to designated Slot")
+						request("reachTarget", "reachTarget($CurrentSlotToFillX,$CurrentSlotToFillY)" ,"cargorobot" )  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t010",targetState="deposit_container",cond=whenReply("targetReached"))
+					transition(edgeName="t011",targetState="movement_failed",cond=whenReply("targetUnreachable"))
+				}	 
+				state("deposit_container") { //this:State
+					action { //it:State
+						CommUtils.outmagenta("[CARGO SERVICE] Robot reached final slot. Depositing container into model.")
+						 OccupyFirstFreeSlot(SlotsList, Container())  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="go_home", cond=doswitch() )
+				}	 
+				state("go_home") { //this:State
+					action { //it:State
+						CommUtils.outmagenta("[CARGO SERVICE] Command: Moving robot back to Home ($HomeX, $HomeY)")
+						request("reachTarget", "reachTarget($HomeX,$HomeY)" ,"cargorobot" )  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t012",targetState="switch_to_disengaged",cond=whenReply("targetReached"))
+					transition(edgeName="t013",targetState="movement_failed",cond=whenReply("targetUnreachable"))
+				}	 
+				state("movement_failed") { //this:State
+					action { //it:State
+						CommUtils.outred("[CARGO SERVICE] CRITICAL: Robot failed to reach target. Safety stop triggered.")
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="switch_to_disengaged", cond=doswitch() )
 				}	 
 				state("set_outofservice") { //this:State
 					action { //it:State
-						 hold.setState(HoldState.OUTOFSERVICE)  
+						 CurrentHoldState = HoldState.OUT_OF_SERVICE  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
@@ -116,7 +226,7 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				}	 
 				state("switch_to_disengaged") { //this:State
 					action { //it:State
-						 hold.setState(HoldState.DISENGAGED)  
+						 CurrentHoldState = HoldState.DISENGAGED  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002

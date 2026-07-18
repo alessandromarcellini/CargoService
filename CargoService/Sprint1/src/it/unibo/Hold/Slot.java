@@ -1,18 +1,15 @@
 package it.unibo.Hold;
 
-public class Slot implements ISlot {
+public class Slot extends Cell implements ISlot {
 
     private final int id;
     private IContainer content;
 
-    public Slot(int id) {
+    // Aggiornato il costruttore per ricevere anche x e y
+    public Slot(int id, int x, int y) {
+        super(CellType.SLOT, x, y);
         this.id = id;
         this.content = null;
-    }
-
-    @Override
-    public CellType getType() {
-        return CellType.SLOT;
     }
 
     @Override

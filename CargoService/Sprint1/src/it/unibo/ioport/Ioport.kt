@@ -19,6 +19,7 @@ import org.json.simple.JSONObject
 
 
 //User imports JAN2024
+import it.unibo.Hold.*
 
 class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, isdynamic: Boolean=false ) : 
           ActorBasicFsm( name, scope, confined=isconfined, dynamically=isdynamic ){
@@ -30,7 +31,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-				IDisplay display = new Display();
+				val display: IDisplay = Display()
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -58,17 +59,19 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t07",targetState="accepted",cond=whenReply("load_accepted"))
-					transition(edgeName="t08",targetState="retrylater",cond=whenReply("load_retrylater"))
-					transition(edgeName="t09",targetState="refused",cond=whenReply("load_refused"))
+					 transition(edgeName="t018",targetState="accepted",cond=whenReply("load_accepted"))
+					transition(edgeName="t019",targetState="retrylater",cond=whenReply("load_retrylater"))
+					transition(edgeName="t020",targetState="refused",cond=whenReply("load_refused"))
 				}	 
 				state("accepted") { //this:State
 					action { //it:State
 						CommUtils.outgreen("[IOPORT] DISPLAY: load_accepted received")
-						if( checkMsgContent( Term.createTerm("load_accepted(SLOTID)"), Term.createTerm("load_accepted(slotId)"), 
+						if( checkMsgContent( Term.createTerm("load_accepted(SlotId)"), Term.createTerm("load_accepted(SlotId)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								 display.setBookedSlot(slotId)  
-								 display.setState("load accepted, system enganged")  
+								 
+												val SlotId = payloadArg(0).toInt()
+												display.setBookedSlot(SlotId) 
+												display.setState("load accepted, system enganged") 
 						}
 						//genTimer( actor, state )
 					}
@@ -80,14 +83,15 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 				state("retrylater") { //this:State
 					action { //it:State
 						CommUtils.outyellow("[IOPORT] DISPLAY: load_retrylater received")
-						if( checkMsgContent( Term.createTerm("load_retrylater(HOLDSTATE)"), Term.createTerm("load_retrylater(CurrentHoldState)"), 
+						if( checkMsgContent( Term.createTerm("load_retrylater(HOLDSTATE)"), Term.createTerm("load_retrylater(HOLDSTATE)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								if(  CurrentHoldState == HoldState.ENGAGED  
-								 ){ display.setState("retry later, another request is being served...")  
-								}
-								else
-								 { display.setState("retry later, the hold is currently out of service...")  
-								 }
+								
+												val holdStateReceived = payloadArg(0)
+												if (holdStateReceived == "ENGAGED") {
+													display.setState("retry later, another request is being served...") 
+												} else {
+													display.setState("retry later, the hold is currently out of service...") 
+												}
 						}
 						//genTimer( actor, state )
 					}

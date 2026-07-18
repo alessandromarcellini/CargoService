@@ -41,16 +41,16 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t06",targetState="measureDistance",cond=whenDispatch("checkMeasurement"))
+					 transition(edgeName="t017",targetState="measureDistance",cond=whenDispatch("checkMeasurement"))
 				}	 
 				state("measureDistance") { //this:State
 					action { //it:State
 						CommUtils.outyellow("[SONAR] measuring distance...")
-						 CurrD = Random.nextInt(0, 6)  
-						if(  currD > DFREE  
+						 CurrD = java.util.Random().nextInt(0, 6)  
+						if(  CurrD > DFREE  
 						 ){delay(3000) 
-						 CurrD = Random.nextInt(0, 6)  
-						if(  currD > DFREE  
+						 CurrD = java.util.Random().nextInt(0, 6)  
+						if(  CurrD > DFREE  
 						 ){CommUtils.outblack("[SONAR] send message to cargoservice that the hold is out of service")
 						emit("outOfService", "outOfService(none)" ) 
 						}

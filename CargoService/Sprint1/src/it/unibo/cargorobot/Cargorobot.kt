@@ -29,15 +29,65 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 	override fun getBody() : (ActorBasicFsm.() -> Unit){
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
+		 val StepTime = 350  
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice")
+						CommUtils.outyellow("[CARGOROBOT] ready (adapter towards the external robotsmart)")
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
+				}	 
+				state("waiting") { //this:State
+					action { //it:State
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t014",targetState="reaching",cond=whenRequest("reachTarget"))
+				}	 
+				state("reaching") { //this:State
+					action { //it:State
+						if( checkMsgContent( Term.createTerm("reachTarget(TARGETX,TARGETY)"), Term.createTerm("reachTarget(TARGETX,TARGETY)"), 
+						                        currentMsg.msgContent()) ) { //set msgArgList
+								 val Tx = payloadArg(0)  
+								 val Ty = payloadArg(1)  
+								CommUtils.outyellow("[CARGOROBOT] forwarding moverobot($Tx,$Ty) to robotsmart")
+								request("moverobot", "moverobot($Tx,$Ty,$StepTime)" ,"robotsmart" )  
+						}
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t015",targetState="target_ok",cond=whenReply("moverobotdone"))
+					transition(edgeName="t016",targetState="target_fail",cond=whenReply("moverobotfailed"))
+				}	 
+				state("target_ok") { //this:State
+					action { //it:State
+						CommUtils.outgreen("[CARGOROBOT] target reached")
+						answer("reachTarget", "targetReached", "targetReached(ok)"   )  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
+				}	 
+				state("target_fail") { //this:State
+					action { //it:State
+						CommUtils.outred("[CARGOROBOT] target unreachable")
+						answer("reachTarget", "targetUnreachable", "targetUnreachable(fail)"   )  
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
 				}	 
 			}
 		}
