@@ -93,5 +93,86 @@ public class Hold implements IHold {
 			}
 		}
 	}
-	
+
+	// ------------------------------------------------------------------
+	// Station coordinates (Sprint 1). The Hold is a business registry:
+	// slot states, hold state and station positions. The navigation map
+	// (obstacles, routing) is owned by the robot subsystem; the obstacle
+	// cells in the constructor are layout documentation only.
+	// ------------------------------------------------------------------
+
+	private int[] findSlot(int slotId) {
+		for (int i = 0; i < 7; i++) {
+			for (int j = 0; j < 7; j++) {
+				if (hold[i][j] instanceof ISlot && ((ISlot) hold[i][j]).getId() == slotId) {
+					return new int[] { i, j };
+				}
+			}
+		}
+		return new int[] { -1, -1 };
+	}
+
+	private int[] findCellOfType(CellType type) {
+		for (int i = 0; i < 7; i++) {
+			for (int j = 0; j < 7; j++) {
+				if (hold[i][j].getType() == type) {
+					return new int[] { i, j };
+				}
+			}
+		}
+		return new int[] { -1, -1 };
+	}
+
+	@Override
+	public int getSlotRow(int slotId) { return findSlot(slotId)[0]; }
+
+	@Override
+	public int getSlotCol(int slotId) { return findSlot(slotId)[1]; }
+
+	@Override
+	public int getIoportRow() { return findCellOfType(CellType.IOPORT)[0]; }
+
+	@Override
+	public int getIoportCol() { return findCellOfType(CellType.IOPORT)[1]; }
+
+	@Override
+	public int getHomeRow() { return findCellOfType(CellType.HOME)[0]; }
+
+	@Override
+	public int getHomeCol() { return findCellOfType(CellType.HOME)[1]; }
+
+	// ------------------------------------------------------------------
+	// Observability / controllability (Sprint 1 test support, P5).
+	// The description uses only letters, digits and underscores so it can
+	// safely travel as a message payload.
+	// ------------------------------------------------------------------
+
+	@Override
+	public String getStateDescription() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(currentState.name().toLowerCase()); // lowercase: payload atoms must not start uppercase
+		for (int id = 1; id <= 4; id++) {
+			int[] pos = findSlot(id);
+			ISlot slot = (ISlot) hold[pos[0]][pos[1]];
+			sb.append("_slot").append(id).append(slot.getContent() == null ? "free" : "occupied");
+		}
+		return sb.toString();
+	}
+
+	@Override
+	public void presetFull() {
+		for (int id = 1; id <= 4; id++) {
+			setSlotToOccupied(id);
+		}
+	}
+
+	@Override
+	public void presetEmpty() {
+		for (int id = 1; id <= 5; id++) {
+			int[] pos = findSlot(id);
+			((ISlot) hold[pos[0]][pos[1]]).setContent(null);
+		}
+		this.currentState = HoldState.DISENGAGED;
+	}
+
 }
