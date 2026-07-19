@@ -5,12 +5,13 @@ request( load_request, load_request(none) ).
 reply( load_accepted, load_accepted(SLOTID) ).  %%for load_request
 reply( retrylater, retrylater(HOLDSTATE) ).  %%for load_request
 reply( load_refused, load_refused(none) ).  %%for load_request
+request( reachTarget, reachTarget(TARGET) ).
+reply( targetReached, targetReached(TARGET) ).  %%for reachTarget
+reply( targetUnreachable, targetUnreachable(TARGET) ).  %%for reachTarget
 %====================================================================================
 context(ctxmock, "localhost",  "TCP", "8020").
  qactor( cargoservice, ctxmock, "it.unibo.cargoservice.Cargoservice").
  static(cargoservice).
-  qactor( robotservice, ctxmock, "it.unibo.robotservice.Robotservice").
- static(robotservice).
   qactor( cargorobot, ctxmock, "it.unibo.cargorobot.Cargorobot").
  static(cargorobot).
   qactor( sonar, ctxmock, "it.unibo.sonar.Sonar").

@@ -48,9 +48,9 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t01",targetState="accepted",cond=whenReply("load_accepted"))
-					transition(edgeName="t02",targetState="retrylater",cond=whenReply("retrylater"))
-					transition(edgeName="t03",targetState="refused",cond=whenReply("load_refused"))
+					 transition(edgeName="t02",targetState="accepted",cond=whenReply("load_accepted"))
+					transition(edgeName="t03",targetState="retrylater",cond=whenReply("retrylater"))
+					transition(edgeName="t04",targetState="refused",cond=whenReply("load_refused"))
 				}	 
 				state("accepted") { //this:State
 					action { //it:State

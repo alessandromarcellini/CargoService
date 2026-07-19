@@ -32,12 +32,36 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[CARGO ROBOT] initialized, will receive commands in order to be controlled from the cargoservice")
+						CommUtils.outyellow("[CARGOROBOT] ready, waiting for reach-target goals from cargoservice")
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
+				}	 
+				state("waiting") { //this:State
+					action { //it:State
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t01",targetState="reaching",cond=whenRequest("reachTarget"))
+				}	 
+				state("reaching") { //this:State
+					action { //it:State
+						if( checkMsgContent( Term.createTerm("reachTarget(TARGET)"), Term.createTerm("reachTarget(Target)"), 
+						                        currentMsg.msgContent()) ) { //set msgArgList
+								CommUtils.outyellow("[CARGOROBOT] reaching target $Target ...")
+								answer("reachTarget", "targetReached", "targetReached(Target)"   )  
+						}
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="waiting", cond=doswitch() )
 				}	 
 			}
 		}

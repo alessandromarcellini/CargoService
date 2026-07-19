@@ -286,19 +286,19 @@ div.imagedesc{
 <div class="remark">
 	Sprint 0 (available <a href="../../Sprint0/userDocs/sprint0_v2.html" target="_blank">here</a>) closed with the following results:
 	<ul>
-		<li>the requirements of the committente were copied verbatim and every ambiguity was turned into an explicit question to the committente (with the answers recorded);</li>
+		<li>the requirements of the committente were copied and every ambiguity was turned into an explicit question to the committente (with the answers recorded);</li>
 		<li>the requirement analysis classified every entity of the domain (POJO, enum, actor, service), fixed the message contract of the load conversation, and selected <tt>RobotSmart26</tt> as the robot asset to reuse, with an explicit comparison of the four assets offered by the committente;</li>
 		<li>a first executable model of the system was produced;</li>
 		<li>a first automated Test Plan (TP0.1, load accepted on an empty hold) was implemented and executed; two further cases (TP0.2 refused, TP0.3 retrylater) were specified but explicitly deferred to Sprint 1, because they require the state of the hold to be observable and presettable from a test;</li>
 		<li>the Test Plan work revealed a defect in the model: the three answer branches of <tt>handle_load_request</tt> were written as sequential checks instead of mutually exclusive alternatives, so one request could produce two replies. Its correction was scheduled for this sprint.</li>
 	</ul>
 	<br>
-	The goal of this sprint, as declared in the closing page of Sprint 0, is reported verbatim below.
+	The goal of this sprint, as declared in the closing page of Sprint 0, is reported below.
 	<div class="req" style="width:auto">
 		The goal of Sprint 1 is to create an executable prototype of the cargo service that implements the core business logic (loading and moving of the container), starting from the user load request
-		up to the the container placement in the reserved slot, without worring about other small details like the Led blinking, the out of service possibility for the hold or actually placing physical stuff on top of a PICO W (simulating these elements).
+		up to the the container placement in the reserved slot, without worring about other small details like the Led blinking, the out of service possibility for the hold.
 		<br><br>
-		After the competion of sprint1 the system will be able to:
+		After finishing the sprint1 the system will be able to:
 		<ol>
 			<li>Process load requests from the user, responding (with load_accepted, retry_later or load_refused) accordingly with the current state of the hold;</li>
 			<li>Make the robot move across the hold to implement the container movement logic;</li>
@@ -366,6 +366,18 @@ div.imagedesc{
 			<i>Adopted interpretation:</i> the system serves one load operation at a time: any request received while the state is not disengaged is answered with <tt>retrylater</tt>, carrying the current state of the hold so that the display can explain the reason.<br>
 			<b>Answer from the committente:</b>
 		</li>
+		<br>
+		<li>
+			<b>Restore from Out of Service</b> The requirements do not talk about in which conditions the system can be restored from the Out of service state.<br>
+			<i>Adopted interpretation:</i> <br>
+			<b>Answer from the committente:</b>
+		</li>
+		<br>
+		<li>
+			<b>Sonar Behavior</b> Does the sonar needs to wait the cargoservice's message to start detecting the distance of the container?<br>
+			<i>Adopted interpretation:</i> <br>
+			<b>Answer from the committente:</b>
+		</li>
 	</ol>
 </div>
 
@@ -395,7 +407,7 @@ div.imagedesc{
 		<li><b>navigation knowledge</b>: which cells are free or blocked by obstacles, and how to compute a route between two points. This knowledge is needed only to move;</li>
 		<li><b>business knowledge</b>: which slots exist, whether each one is free or occupied, the state of the hold, and the coordinates of the relevant stations (IOPort, slot1..5, HOME). This knowledge is needed to answer requests and to command the trip.</li>
 	</ul>
-	<b>Decision:</b> the navigation knowledge (the map of the environment) belongs to the robot subsystem, which needs it to plan and execute movements; the business model owned by cargoservice keeps <i>only</i> the state of the slots, the state of the hold and the coordinates of the stations.
+	<b>Decision:</b> the navigation knowledge (the map of the environment) belongs to <b>RobotSmart26</b>, which needs it to plan and execute movements; the business model owned by <b>cargoservice</b> keeps <i>only</i> the state of the slots, the state of the hold and the coordinates of the stations.
 	<br>
 	<b>Why:</b> single responsibility — the business logic never plans a route, so it has no reason to own a map; duplicating the map in two places would create a consistency problem between the business copy and the environment the robot actually navigates. The residual risk (the station coordinates kept by the business model must agree with the robot subsystem's environment) is a configuration-time alignment, accepted and logged.
 
@@ -406,13 +418,12 @@ div.imagedesc{
 			<tr><th>Component</th><th>Nature</th><th>Context</th><th>Responsibility in Sprint 1</th></tr>
 		</thead>
 		<tbody>
-			<tr><td><b>cargoservice</b></td><td>service (active)</td><td>ctxcargoservice</td><td>Owns the business logic: answer policy, engagement lifecycle and waiting window, sequencing of the container trip (with coordinate resolution), bookkeeping of the hold model.</td></tr>
-			<tr><td><b>hold model</b></td><td>passive model</td><td>ctxcargoservice (owned by cargoservice)</td><td>State of the slots, state of the hold, coordinates of the stations. It does <i>not</i> contain navigation knowledge. Must be observable from the outside (see P5).</td></tr>
-			<tr><td><b>ioport</b></td><td>actor (boundary)</td><td>ctxioport</td><td>Turns a pushbutton press into a load request and shows the answer on the display. Takes no business decision.</td></tr>
-			<tr><td><b>sonar</b></td><td>actor (detector, simulated)</td><td>ctxdevices</td><td>When triggered, measures the distance repeatedly and signals the detection of a container (D &lt; DFREE/2). The failure branch (Out of service) is deferred.</td></tr>
-			<tr><td><b>cargorobot</b></td><td>actor (executor)</td><td>ctxrobot</td><td>Given one goal position at a time, brings the robot to it and reports success or failure. It does not know the trip.</td></tr>
-			<tr><td><b>robotsmart</b></td><td>external component</td><td>ctxrobotsmart</td><td>The navigation subsystem made available by the committente: owns the map of the environment and executes goal-level movements. Its concrete realization is a Design concern.</td></tr>
-			<tr><td><b>led</b></td><td>actor (deferred)</td><td>ctxdevices</td><td>Not part of this sprint (declared goal).</td></tr>
+			<tr><td><b>cargoservice</b></td><td>service (active)</td><td>ctxcargoservice</td><td>Owns the business logic: answer policy, engagement lifecycle and waiting window, sequencing of the container trip (with coordinate resolution), keeping the hold state.</td></tr>
+			<tr><td><b>ioport</b></td><td>actor</td><td>ctxioport</td><td>Turns a pushbutton press into a load request and shows the answer on the display. Takes no business decision.</td></tr>
+			<tr><td><b>sonar</b></td><td>actor</td><td>ctxdevices</td><td>When triggered, measures the distance repeatedly and signals the detection of a container (D &lt; DFREE/2). The failure branch (Out of service) is deferred.</td></tr>
+			<tr><td><b>cargorobot</b></td><td>actor</td><td>ctxrobot</td><td>Given one goal position at a time, brings the robot to it and reports success or failure. It does not know the trip.</td></tr>
+			<tr><td><b>robotsmart</b></td><td>external service</td><td>ctxrobotsmart</td><td>The navigation subsystem made available by the committente: owns the map of the environment and executes goal-level movements. Its concrete realization is a Design concern.</td></tr>
+			<tr><td><b>led</b></td><td>actor</td><td>ctxdevices</td><td>Not part of this sprint (declared goal).</td></tr>
 		</tbody>
 	</table>
 	<br>
@@ -521,7 +532,7 @@ div.imagedesc{
 		<li>the <b>answer policy</b>: accepted / refused / retrylater, decided against the hold model;</li>
 		<li>the <b>engagement lifecycle</b>: the transition disengaged &rarr; engaged on acceptance, and back on completion or timeout;</li>
 		<li>the <b>trip plan</b>: the sequence IOPort &rarr; slot5 (marking pause) &rarr; reserved slot &rarr; HOME, as the requirement sentence "the cargoservice uses the cargorobot to move the container..." dictates. Since the business model owns the station coordinates, cargoservice also resolves each named station into the position sent to the robot;</li>
-		<li>the <b>hold bookkeeping</b>: reservation (kept in the service memory while engaged), occupation on deposit, discard of the reservation on timeout or failure.</li>
+		<li>the <b>hold state bookkeeping</b>: reservation (kept in the service memory while engaged), occupation on deposit, discard of the reservation on timeout or failure.</li>
 	</ul>
 	The hold model is deliberately a passive object with a single owner (cargoservice): a single writer avoids consistency problems between concurrent requests, and a single place must be read to know the state of the system — which is exactly what the test plans need (P5).
 
@@ -542,10 +553,8 @@ div.imagedesc{
 			<tr><td><tt>checkMeasurement(none)</tt></td><td>dispatch</td><td>cargoservice &rarr; sonar</td><td>Triggers the measurement activity while the system is engaged. Fire-and-forget: the outcome comes back, if at all, as an event.</td></tr>
 			<tr><td><tt>containerPositioned(none)</tt></td><td>event</td><td>sonar &rarr; (broadcast)</td><td>A container has been detected in the sensor area (D &lt; DFREE/2). Broadcast because the sonar must not depend on who consumes the detection; the event is simply lost if nobody is waiting for it (i.e. if the system is not engaged), which is the desired semantics.</td></tr>
 			<tr><td><tt>reachTarget(TARGETX, TARGETY)</tt></td><td>request</td><td>cargoservice &rarr; cargorobot</td><td>Bring the robot to the given position. The service resolves a station name (IOPort, slot5, slot1..4, HOME) into its coordinates using its own model. One goal at a time.</td></tr>
-			<tr><td><tt>targetReached(ARG)</tt></td><td>reply</td><td>cargorobot &rarr; cargoservice</td><td>The target has been reached; the next leg of the trip can start.</td></tr>
+			<tr><td><tt>targetReached(ARG)</tt></td><td>reply</td><td>cargorobot &rarr; cargoservice</td><td>The target has been reached; the next step of the trip can start.</td></tr>
 			<tr><td><tt>targetUnreachable(ARG)</tt></td><td>reply</td><td>cargorobot &rarr; cargoservice</td><td>The target cannot be reached (policy: committente question 1).</td></tr>
-			<tr><td><tt>get_hold(none)</tt> / <tt>hold_state(MAP)</tt></td><td>request/reply</td><td>test &rarr; cargoservice</td><td>Test support (P5): returns the current hold map and state, making the system observable. Served when the service is quiescent, so that observing never perturbs the engagement lifecycle.</td></tr>
-			<tr><td><tt>preset_hold(CONFIG)</tt></td><td>dispatch</td><td>test &rarr; cargoservice</td><td>Test support (P5): presets the hold occupancy (e.g. full / empty) to establish the <i>Given</i> of a test.</td></tr>
 		</tbody>
 	</table>
 	<br>
@@ -584,18 +593,6 @@ div.imagedesc{
 	<b>cargorobot.</b> <tt>waiting</tt> &rarr; on <tt>reachTarget</tt> &rarr; <tt>reaching</tt>: brings the robot to the goal position (how is internal, see Design); replies <tt>targetReached</tt> or <tt>targetUnreachable</tt> &rarr; back to <tt>waiting</tt>.
 
 	<br><br>
-	<h3>Problems and obstacles</h3>
-	The problems that separate this logical architecture from a working prototype. Each of them is bound to a solution in the Project section.
-	<ol>
-		<li><b>P1 — Mutually exclusive answers.</b> The Sprint 0 model can produce two replies to one request (sequential checks). The answer policy must be restructured as mutually exclusive alternatives; the test plans guard this with "exactly one reply" assertions.</li>
-		<li><b>P2 — Timed engagement window.</b> The 30 s window must be modelled as a timed transition of the state machine, not as a busy wait: an actor stuck in a loop stops handling messages.</li>
-		<li><b>P3 — Detection triggering.</b> Someone must initiate the measurement. Chosen: the cargoservice triggers the sonar upon engagement (dispatch), the sonar measures repeatedly and answers with a broadcast event. The 3 s persistence check of the measure is consciously simplified in this sprint (deferred with the failure logic).</li>
-		<li><b>P4 — Split of the environment knowledge.</b> The navigation map belongs to the robot subsystem; the business model keeps only slot states, hold state and station coordinates ("Who knows the environment?"). Consequently the trip and the coordinate resolution are business logic, and the robot receives one goal position at a time. The residual risk is the configuration-time alignment between the station coordinates and the robot's environment.</li>
-		<li><b>P5 — Observability and controllability.</b> TP0.2/TP0.3 were deferred exactly because the hold state could not be read or preset from outside. The hold model must become an observable resource, and its occupancy presettable, for the tests to establish their <i>Given</i> and assert their <i>Then</i>.</li>
-		<li><b>P6 — Marking without a marker component.</b> The committente stated that the marker can be emulated by a ~5 s pause in the movement logic: no marker component is introduced in this sprint (a deliberate difference from other teams, justified by our own committente answer).</li>
-		<li><b>P7 — Missing physical devices.</b> The pushbutton, sonar and robot hardware do not exist yet: simulated counterparts must respect exactly the same message contracts, so that replacing them later does not touch the business logic.</li>
-		<li><b>P8 — Race between timeout and detection.</b> The window expiry and the detection event can occur almost simultaneously. The state machine semantics (the first transition taken wins, a late event finds no transition waiting and is dropped) must guarantee that the reservation is either discarded exactly once or the trip started exactly once, never both.</li>
-	</ol>
 </div>
 
 
@@ -653,24 +650,7 @@ div.imagedesc{
 	The system is a set of distributed state machines that interact only by messages. Plain Java/Kotlin offers no first-class construct for actors, messages, events or timed transitions: encoding them by hand means threads, sockets and callbacks that bury the model. <tt>qak</tt> is an <i>executable metamodel</i>: QActors are Moore FSMs, messages are declared contracts (<tt>Request/Reply/Dispatch/Event</tt>), timed transitions exist natively (<tt>whenTime</tt>), and the same QActor can be deployed as a nano-service in one JVM or as a distributed component without changing the model. This is exactly the gap between our Problem analysis and runnable code, which is why the executable model is written in qak (full argument in Sprint 0, "Why qak").
 
 	<br><br>
-	<h3>Bindings (problem &rarr; solution)</h3>
-	<table border="1" cellspacing="0" cellpadding="6">
-		<thead>
-			<tr><th>Problem</th><th>Design decision</th><th>Justification</th></tr>
-		</thead>
-		<tbody>
-			<tr><td>P1</td><td>Restructure <tt>handle_load_request</tt> as mutually exclusive branches (if / else) with an <tt>autodispatch</tt>-driven exit per branch.</td><td>Removes the fall-through that produced double replies; TP1.1-1.3 assert "exactly one reply" to keep it fixed.</td></tr>
-			<tr><td>P2</td><td><tt>whenTime 30000</tt> timed transition on the <tt>accept_load_request</tt> state.</td><td>Native timed transition instead of busy waiting. The window is the prefixed constant of the requirement; TP1.4 accepts the 30 s wait rather than introducing test-only timing into the model.</td></tr>
-			<tr><td>P3</td><td><tt>Dispatch checkMeasurement</tt> to the sonar mock; the mock loops measure &rarr; wait 1 s &rarr; measure (state loop, no busy wait) and <tt>emit</tt>s <tt>containerPositioned</tt> when D &lt; DFREE/2.</td><td>Matches the interaction types chosen in the analysis; the mock respects the same contract the real device will implement (P7). Iteration as a state loop because qak has no while/for.</td></tr>
-			<tr><td>P4</td><td><tt>cargorobot</tt> as a pure protocol <b>Adapter</b> over the reused <tt>RobotSmart26</tt> service: it forwards <tt>reachTarget(X, Y)</tt> as <tt>moverobot(X, Y, STEPTIME)</tt> and translates the outcome replies back. The coordinates are resolved by cargoservice from the hold model; the navigation map and the A* planner live inside RobotSmart26.</td><td>Direct consequence of the "Who knows the environment?" decision. The choice of RobotSmart26 was argued in Sprint 0 (only asset providing planner + map behind a goal-level command). The business logic depends on the <tt>reachTarget</tt> port, never on the asset (dependency inversion).</td></tr>
-			<tr><td>P5</td><td>Test-support messages served by cargoservice in its <tt>waiting</tt> state: <tt>Request get_hold</tt> / <tt>Reply hold_state(MAP)</tt> and <tt>Dispatch preset_hold(CONFIG)</tt>, backed by the <tt>IHold</tt> POJO (<tt>getStateDescription()</tt>, <tt>presetFull()</tt>, <tt>presetEmpty()</tt>).</td><td>Makes the hold an observable, controllable resource with minimal surface; it is test scaffolding, it takes no business decision, and serving it only in <tt>waiting</tt> guarantees that observing the system never perturbs the engagement lifecycle (no observer effect).</td></tr>
-			<tr><td>P6</td><td>A 5000 ms <tt>delay</tt> in the <tt>marking_pause</tt> state, between the slot5 leg and the reserved-slot leg.</td><td>Directly implements the committente clarification; no marker component is built in this sprint.</td></tr>
-			<tr><td>P7</td><td>Sonar as a mock QActor; the interactive <tt>ioport</tt> actor (console-driven) is kept only as a manual demo driver and is excluded from the automated tests, where the JUnit client plays the ioport role.</td><td>Same contracts as the future real devices; the console <tt>readln()</tt> would block automation, so tests bypass the actor, exactly as in Sprint 0.</td></tr>
-			<tr><td>P8</td><td>Both stimuli (window expiry, detection event) are transitions of the same <tt>accept_load_request</tt> state: the qak FSM takes exactly one of them; a late event finds no waiting transition and is dropped.</td><td>The single-threaded FSM semantics of a QActor resolves the race by construction; the reservation discard runs only in the timeout/abort path.</td></tr>
-		</tbody>
-	</table>
-
-	<br>
+	
 	<h3>Contexts and node allocation</h3>
 	The four contexts of Sprint 0 are kept, with one correction: <tt>ctxcargoservice</tt> was on port 8020, which collides with the context of the reused <tt>robotsmart</tt> service (fixed by the asset at 8020). Our contexts are therefore moved to the 8030 range; the test configuration is updated accordingly.
 	<pre>
@@ -683,97 +663,26 @@ Context ctxrobotsmart   ip [host="127.0.0.1"  port=8020]   // reused asset, port
 ExternalQActor robotsmart context ctxrobotsmart
 	</pre>
 
-	<h3>The hold model in code</h3>
-	Coherently with the "Who knows the environment?" decision, the <tt>Hold</tt> POJO is used by cargoservice as a <b>business registry</b>: state of the hold, state of the slots, and the coordinates of the stations (exposed by <tt>getSlotRow/Col</tt>, <tt>getIoportRow/Col</tt>, <tt>getHomeRow/Col</tt>).
-	The obstacle cells listed in its constructor are retained only as documentation of the layout: they are never used to navigate, since the navigation map is owned by RobotSmart26. The alignment between the two descriptions of the environment is a configuration-time duty, verified during the integration run.
+	<br>
+	<h3>The hold model backtracking</h3>
+	In Sprint 1 we decided to remove the IHold interface and the separate Hold POJO, which contained the hold state and the mental model of the hold map.
+	This decision was driven by the ready-to-use solution given by the committente, "RobotSmart26", that provides a sub-service inside for mantaining a map model of the environment where the robot operates.
+	Coherently with the "Who knows the environment?" decision, the <tt>Hold</tt> is no longer a singular POJO kept inside the cargoservice, but becomes a <b>business registry</b>: state of the hold, state of the slots, and the coordinates of the stations.
+	The hold map configuration is kept and updated owned by RobotSmart26. The alignment between the two descriptions of the environment is a configuration-time duty, verified during the integration run.
+
+
+
 
 	<br><br>
 	<h3>Patterns</h3>
 	<ul>
 		<li><b>Facade / delega:</b> cargoservice is the single entry point of the system; ioport, tests and (in future) the web GUI all talk to it only. The devices are delegated nano-services, which decouples the boundary from the business logic.</li>
 		<li><b>Adapter (Port/Adapter):</b> cargorobot adapts the domain contract <tt>reachTarget</tt> to <tt>RobotSmart26</tt>'s <tt>moverobot</tt>; the business logic depends on the port, not on the asset (SOLID/Clean Architecture).</li>
-		<li><b>Dependency inversion on passive resources:</b> the business logic depends on <tt>IHold</tt> and <tt>IDisplay</tt>, not on the concrete classes.</li>
+		<li><b>Dependency inversion on passive resources:</b> the business logic depends on <tt>IDisplay</tt>, <tt>ISlot</tt> and <tt>IContainer</tt>, not on the concrete classes.</li>
 		<li><b>Observer (events):</b> the detection is a broadcast event, so the sonar does not know its consumers.</li>
 	</ul>
 
-	<h3>Corrected answer policy (P1) — from the model</h3>
-	<pre>
-State handle_load_request {
-    println("[CARGO SERVICE] evaluating load request...") color cyan
-
-    if [# hold.getState() != HoldState.DISENGAGED #] { // another container is being moved, retry later
-        println("[CARGO SERVICE] another container is being moved or the hold is 'out of service', replying with RETRY LATER.") color cyan
-        [# var CurrentHoldState = hold.getState().toString().lowercase() #]
-        replyTo load_request with load_retrylater : load_retrylater($CurrentHoldState)
-        autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
-    }
-    else { if [# (var SlotToFill = hold.nextFreeSlot()) == null #] { // all slots are taken, refuse request
-        println("[CARGO SERVICE] all slots are taken, replying with REFUSED.") color cyan
-        replyTo load_request with load_refused : load_refused(none)
-        autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
-    }
-    else {
-        println("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.") color cyan
-        [# hold.setState(HoldState.ENGAGED) #]
-        [# CurrentSlotToFillId = SlotToFill.getId() #]
-        replyTo load_request with load_accepted : load_accepted($CurrentSlotToFillId)
-        autodispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
-    } }
-}
-Transition t0
-    whenMsg cargoservice_goto_accept_load_request -> accept_load_request
-    whenMsg cargoservice_goto_waiting -> waiting
-	</pre>
-
-	<h3>cargorobot adapter (P4) — from the model</h3>
-	<pre>
-QActor cargorobot context ctxrobot {
-    [# val StepTime = 350 #]
-
-    State s0 initial {
-        println("[CARGOROBOT] ready (adapter towards the external robotsmart)") color yellow
-    }
-    Goto waiting
-
-    State waiting { }
-    Transition t0
-        whenRequest reachTarget -> reaching
-
-    State reaching {
-        onMsg( reachTarget : reachTarget(TARGETX, TARGETY) ) {
-            [# val Tx = payloadArg(0) #]
-            [# val Ty = payloadArg(1) #]
-            println("[CARGOROBOT] forwarding moverobot($Tx,$Ty) to robotsmart") color yellow
-            request robotsmart -m moverobot : moverobot($Tx,$Ty,$StepTime)
-        }
-    }
-    Transition t0
-        whenReply moverobotdone   -> target_ok
-        whenReply moverobotfailed -> target_fail
-
-    State target_ok {
-        println("[CARGOROBOT] target reached") color green
-        replyTo reachTarget with targetReached : targetReached(ok)
-    }
-    Goto waiting
-
-    State target_fail {
-        println("[CARGOROBOT] target unreachable") color red
-        replyTo reachTarget with targetUnreachable : targetUnreachable(fail)
-    }
-    Goto waiting
-}
-	</pre>
-
-	<div style="background:#fff8dc;border:2px dashed #cc8800;padding:12px;margin:12px 0;border-radius:8px">
-		<b>&#9888; Working note (remove at sprint close).</b> Status of the prototype against this design:
-		the executable model (<tt>cargoservice_sprint1.qak</tt>) implements the P1 fix, the trip sequencing with marking pause, the cargorobot adapter, the test-support messages and the 8030-range ports;
-		the Kotlin actors must be <b>regenerated from the model</b> in the qak toolchain (regeneration is known to reintroduce the usual Kotlin fixes: imports for <tt>HoldState</tt> instead of fully-qualified <tt>it.unibo...</tt> names inside lambdas);
-		the JUnit class <tt>TestPlanSprint1</tt> implementing TP1.1-1.5 and the integration run against RobotSmart26 are still to be completed.
-	</div>
-</div>
-
-
+	
 <h2>Deployment</h2>
 <div class="remark">
 	Steps for an end user to run the Sprint 1 prototype:
@@ -781,13 +690,10 @@ QActor cargorobot context ctxrobot {
 		<li>Clone the project repository: <a href="https://github.com/alessandromarcellini/CargoService" target="_blank">github.com/alessandromarcellini/CargoService</a>;</li>
 		<li>Start the robot environment (reused committente assets): in <tt>robotsmart26/yamls</tt> run <tt>docker compose -f unibobasic26.yaml up</tt>, then open <tt>http://localhost:8090/</tt> in a browser to see the virtual robot scene;</li>
 		<li>Start the robot service: in the <tt>robotsmart26</tt> directory run <tt>./gradlew run</tt>;</li>
-		<li>Start the prototype contexts from <tt>CargoService/Sprint1</tt>, one process per context, with <tt>gradlew -b build2025.gradle run</tt>, setting <tt>application.mainClassName</tt> to the context main:
+		<li>Start the prototype contexts from <tt>CargoService/Sprint1</tt>, one process per context, with <tt>gradlew -b build.gradle run</tt>, setting <tt>application.mainClassName</tt> to the context main:
 			<tt>it.unibo.ctxcargoservice.MainCtxcargoserviceKt</tt>, <tt>it.unibo.ctxdevices.MainCtxdevicesKt</tt>, <tt>it.unibo.ctxrobot.MainCtxrobotKt</tt>, and last <tt>it.unibo.ctxioport.MainCtxioportKt</tt> (the ioport is the manual demo driver);</li>
-		<li>To run the automated Test Plans: <tt>gradlew -b build2025.gradle test</tt> from <tt>CargoService/Sprint1</tt>, with the cargoservice context running.</li>
+		<li>To run the automated Test Plans: <tt>gradlew -b build.gradle test</tt> from <tt>CargoService/Sprint1</tt>, with the cargoservice context running.</li>
 	</ol>
-	<div style="background:#fff8dc;border:2px dashed #cc8800;padding:12px;margin:12px 0;border-radius:8px">
-		<b>&#9888; Working note (remove at sprint close).</b> One dedicated <tt>JavaExec</tt> task per context (instead of editing <tt>mainClassName</tt> per launch) is to be added to <tt>build2025.gradle</tt>; the final, copy-paste run commands will replace step 4 in the closing version of this document.
-	</div>
 </div>
 
 
@@ -795,24 +701,19 @@ QActor cargorobot context ctxrobot {
 <div class="remark">
 	<table border="1" cellspacing="0" cellpadding="6">
 		<thead>
-			<tr><th>#</th><th>Task</th><th>Assignee</th><th>Estimated (h)</th><th>Actual (h)</th></tr>
+			<tr><th>#</th><th>Task</th><th>Assignee</th><th>Estimated (h)</th></tr>
 		</thead>
 		<tbody>
-			<tr><td>1</td><td>Problem analysis (this document)</td><td>both</td><td>4</td><td>-</td></tr>
-			<tr><td>2</td><td>Test plans definition (TP1.1-1.5)</td><td>Villani</td><td>3</td><td>-</td></tr>
-			<tr><td>3</td><td>P1 fix + engagement window</td><td>Marcellini</td><td>3</td><td>-</td></tr>
-			<tr><td>4</td><td>cargorobot adapter + trip sequencing + RobotSmart26 integration</td><td>Marcellini</td><td>8</td><td>-</td></tr>
-			<tr><td>5</td><td>Observability/test support + JUnit TestPlans implementation</td><td>Villani</td><td>8</td><td>-</td></tr>
-			<tr><td>6</td><td>Sonar / ioport mock refinement</td><td>Villani</td><td>3</td><td>-</td></tr>
-			<tr><td>7</td><td>Deployment, integration and debug</td><td>both</td><td>4</td><td>-</td></tr>
-			<tr><td>8</td><td>Document closing + Sprint 2 goal</td><td>both</td><td>3</td><td>-</td></tr>
+			<tr><td>1</td><td>Problem analysis (this document)</td><td>both</td><td>3</td></tr>
+			<tr><td>2</td><td>Test plans definition (TP1.1-1.5)</td><td>Villani</td><td>1</td></tr>
+			<tr><td>4</td><td>cargorobot adapter + trip sequencing + RobotSmart26 integration</td><td>Marcellini</td><td>2</td></tr>
+			<tr><td>5</td><td>Observability/test support + JUnit TestPlans implementation</td><td>Villani</td><td>2</td></tr>
+			<tr><td>6</td><td>Sonar / ioport mock refinement</td><td>Villani</td><td>1</td></tr>
+			<tr><td>7</td><td>Deployment, integration and debug</td><td>both</td><td>2</td></tr>
+			<tr><td>8</td><td>Document closing + Sprint 2 goal</td><td>both</td><td>1</td></tr>
 		</tbody>
 	</table>
 	<br>
-	Estimated total: ~36 h.
-	<div style="background:#fff8dc;border:2px dashed #cc8800;padding:12px;margin:12px 0;border-radius:8px">
-		<b>&#9888; Working note (remove at sprint close).</b> The split above is a proposal to be confirmed by the team; the "Actual" column is filled at sprint close, together with a short estimate-vs-actual comment.
-	</div>
 </div>
 
 
@@ -830,11 +731,9 @@ QActor cargorobot context ctxrobot {
 
 <h2>Closing page</h2>
 <div class="remark">
-	<b>Architecture at the end of Sprint 1.</b> The system is a set of message-based components on four contexts, plus the external navigation subsystem: the <tt>cargoservice</tt> (Facade over the whole system) owns the business logic and the hold model — slot states, hold state and station coordinates, made observable for the tests — while the map of the environment and the route planning live in the reused <tt>RobotSmart26</tt> service; the <tt>ioport</tt> boundary and the JUnit client speak the load contract; the <tt>sonar</tt> mock produces the detection event; the <tt>cargorobot</tt> adapts the goal-level <tt>reachTarget</tt> contract to <tt>RobotSmart26</tt>'s <tt>moverobot</tt>.
-	<br><br>
+	<br>
 	Links: <a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint1/src/cargoservice_sprint1.qak" target="_blank">executable model</a> —
-	<a href="https://github.com/alessandromarcellini/CargoService/tree/main/CargoService/Sprint1" target="_blank">sprint sources</a> —
-	<a href="https://github.com/alessandromarcellini/CargoService/blob/main/RATIONALE.md" target="_blank">decision log (RATIONALE.md)</a>.
+	<a href="https://github.com/alessandromarcellini/CargoService/tree/main/CargoService/Sprint1" target="_blank">sprint sources</a>.
 
 	<br><br>
 	<h3>Sprint 2 Goal</h3>

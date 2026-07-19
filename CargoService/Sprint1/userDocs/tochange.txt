@@ -1,0 +1,2 @@
+- cargorobot in the same context of cargoservice
+- see if handle load request branches are mutually exclusive
