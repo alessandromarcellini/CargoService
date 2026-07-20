@@ -20,52 +20,53 @@ import org.json.simple.JSONObject
 
 //User imports JAN2024
 
-// simulated detector: one measurement per state activation; the iteration is a
-// state loop (an actor must never busy-wait). The failure branch (sustained
-// D > DFREE, out of service) is deferred to Sprint 2 with its logic.
+// proactive detector (committente answer Q5): publishes on its own initiative
+// the distances read (in cyclic order) from the statically configurable table
+// sonarDistances.txt — deterministic, reproducible prototype runs. The physical
+// pico sonar will publish really-measured distances on the same contract.
 class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, isdynamic: Boolean=false ) :
           ActorBasicFsm( name, scope, confined=isconfined, dynamically=isdynamic ){
 
 	override fun getInitialState() : String{
-		return "waiting"
+		return "s0"
 	}
 	override fun getBody() : (ActorBasicFsm.() -> Unit){
-		//val interruptedStateTransitions = mutableListOf<Transition>()
-		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 
-				val DFREE  = 3
-				var CurrD = 0
+			fun LoadDistances(): List<Int> {
+				val fallback = listOf(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1)
+				return try {
+					val vals = java.io.File("sonarDistances.txt").readLines()
+						.map { line -> line.substringBefore('#').trim() }
+						.filter { line -> line.isNotEmpty() }
+						.flatMap { line -> line.split(',').map { p -> p.trim() } }
+						.filter { p -> p.isNotEmpty() }
+						.map { p -> p.toInt() }
+					if (vals.isEmpty()) fallback else vals
+				} catch (e: Exception) { fallback }
+			}
+			val Distances = LoadDistances()
+			var MeasureIdx = 0
 		return { //this:ActionBasciFsm
-				state("waiting") { //this:State
+				state("s0") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[SONAR] ready!")
-						//genTimer( actor, state )
+						CommUtils.outyellow("[SONAR] proactive publisher started (table of ${Distances.size} distances, cyclic)")
 					}
-					//After Lenzi Aug2002
 					sysaction { //it:State
 					}
-					 transition(edgeName="t017",targetState="measureDistance",cond=whenDispatch("checkMeasurement"))
+					 transition( edgeName="goto",targetState="publish", cond=doswitch() )
 				}
-				state("measureDistance") { //this:State
+				state("publish") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[SONAR] measuring distance...")
-						 CurrD = java.util.Random().nextInt(0, 6)
-						if(  CurrD < DFREE / 2
-						 ){CommUtils.outyellow("[SONAR] container detected (D < DFREE/2)")
-						emit("containerPositioned", "containerPositioned(none)" )
-						forward("sonar_measure_done", "sonar_measure_done(none)" ,name )
-						}
-						else
-						 {delay(1000)
-						forward("sonar_measure_again", "sonar_measure_again(none)" ,name )
-						 }
-						//genTimer( actor, state )
+						 val D = Distances[MeasureIdx % Distances.size]
+						 MeasureIdx = MeasureIdx + 1
+						CommUtils.outyellow("[SONAR] D=$D")
+						emit("sonar_distance", "sonar_distance($D)" )
+						delay(1000)
+						forward("sonar_next_measure", "sonar_next_measure(none)" ,name )
 					}
-					//After Lenzi Aug2002
 					sysaction { //it:State
 					}
-					 transition(edgeName="t018",targetState="waiting",cond=whenDispatch("sonar_measure_done"))
-					transition(edgeName="t019",targetState="measureDistance",cond=whenDispatch("sonar_measure_again"))
+					 transition(edgeName="t030",targetState="publish",cond=whenDispatch("sonar_next_measure"))
 				}
 			}
 		}

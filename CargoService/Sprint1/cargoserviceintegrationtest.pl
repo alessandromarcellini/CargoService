@@ -1,29 +1,30 @@
 %====================================================================================
-% cargoservice description (post committente-call model, sprint1_v1.html)
+% cargoservice INTEGRATION TEST configuration (TP1.6, sprint1_v1.html)
+%
+% Unlike the unit configuration (cargoservicetest.pl), here the REAL cargorobot
+% adapter is deployed and the trip runs against the REAL navigation subsystem
+% robotsmart26 (external context, port 8020): this is the run that verifies the
+% out-of-band coordinate alignment between the business registry and the map.
+% PREREQUISITES: the robot environment (docker, WEnv) and the robotsmart26
+% service must be running (Deployment, steps 2-3). Launch: gradlew integrationTest
 %====================================================================================
 request( load_request, load_request(none) ).
 reply( load_accepted, load_accepted(SlotId) ).  %%for load_request
 reply( load_retrylater, load_retrylater(HOLDSTATE) ).  %%for load_request
 reply( load_refused, load_refused(none) ).  %%for load_request
-%% proactive sonar (committente answer Q5): no trigger, distance events only
 event( sonar_distance, sonar_distance(D) ).
-%% boundary inhibition (committente answer Q3)
 dispatch( inhibit_ioport, inhibit_ioport(none) ).
 dispatch( enable_ioport, enable_ioport(none) ).
-%% utility messages for cargoservice (state routing)
 dispatch( cargoservice_goto_accept_load_request, cargoservice_goto_accept_load_request(none) ).
 dispatch( cargoservice_goto_waiting, cargoservice_goto_waiting(none) ).
 dispatch( cargoservice_start_trip, cargoservice_start_trip(none) ).
 dispatch( cargoservice_stay_engaged, cargoservice_stay_engaged(none) ).
 dispatch( cargoservice_window_expired, cargoservice_window_expired(none) ).
-%% utility messages for the sonar publication state-loop (no busy wait)
 dispatch( sonar_next_measure, sonar_next_measure(none) ).
-%% observability / controllability for the automated TestPlans (P5)
 request( get_hold, get_hold(none) ).
 reply( hold_state, hold_state(HOLDSTATE) ).  %%for get_hold
 request( preset_hold, preset_hold(HOLDCONFIG) ).
 reply( preset_done, preset_done(ARG) ).  %%for preset_hold
-%% declared for Sprint 2 (sonar-driven out-of-service detection)
 event( outOfService, outOfService(none) ).
 request( reachTarget, reachTarget(TARGETX,TARGETY) ).
 reply( targetReached, targetReached(ARG) ).  %%for reachTarget
@@ -35,15 +36,11 @@ reply( moverobotdone, moverobotdone(ARG) ).  %%for moverobot
 reply( moverobotfailed, moverobotfailed(PLANDONE,PLANTODO) ).  %%for moverobot
 %====================================================================================
 context(ctxcargoservice, "localhost",  "TCP", "8030").
-context(ctxioport, "localhost",  "TCP", "8031").
-context(ctxdevices, "localhost",  "TCP", "8033").
 context(ctxrobotsmart, "127.0.0.1",  "TCP", "8020").
  qactor( robotsmart, ctxrobotsmart, "external").
   qactor( cargoservice, ctxcargoservice, "it.unibo.cargoservice.Cargoservice").
  static(cargoservice).
   qactor( cargorobot, ctxcargoservice, "it.unibo.cargorobot.Cargorobot").
  static(cargorobot).
-  qactor( sonar, ctxdevices, "it.unibo.sonar.Sonar").
- static(sonar).
-  qactor( ioport, ctxioport, "it.unibo.ioport.Ioport").
+  qactor( ioport, ctxcargoservice, "it.unibo.mock.MockIoport").
  static(ioport).

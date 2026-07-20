@@ -25,11 +25,12 @@ import kotlin.concurrent.thread
  * TEST ARCHITECTURE (unit variant). The test JVM starts, once, the qak TEST
  * CONFIGURATION described by cargoservicetest.pl: the REAL cargoservice plus
  * two test doubles (MockCargorobot, which confirms every reachTarget;
- * MockSonar, which absorbs checkMeasurement and never emits). All co-located
+ * MockIoport, which absorbs the inhibit/enable boundary commands; no sonar is
+ * deployed, each plan injects the sonar_distance event it needs). All co-located
  * in ctxcargoservice: by qak location transparency the service code is exactly
  * the production one. The test client then plays the ioport boundary over TCP
  * (localhost:8030) using the same request/reply contract, and injects the
- * containerPositioned event where a plan requires the detection.
+ * below-threshold sonar_distance event where a plan requires the detection.
  *
  * OBSERVABILITY / CONTROLLABILITY (P5). Every Given is built with
  * preset_hold(empty|full) and every Then is asserted on the reply plus on the
@@ -113,9 +114,10 @@ class TestPlanSprint1 {
         return m!!.groupValues[1]       // e.g. disengaged_free_occupied_free_free
     }
 
-    /** Injects the sonar detection as the external event the model expects. */
-    private fun injectContainerPositioned() {
-        conn!!.forward("msg(containerPositioned,event,sonar,none,containerPositioned(none),1)")
+    /** Publishes the same distance event the proactive sonar would:
+        D = 1 < DFREE/2, i.e. the detection of a container at the IOPort. */
+    private fun injectContainerDetected() {
+        conn!!.forward("msg(sonar_distance,event,sonar,none,sonar_distance(1),1)")
     }
 
     private fun slotIdOf(reply: String): Int? =
@@ -148,7 +150,7 @@ class TestPlanSprint1 {
 
         // close the engagement (detection + full trip) so that the system is
         // quiescent again; getHoldDescription() is also the one-reply guard
-        injectContainerPositioned()
+        injectContainerDetected()
         val hold = getHoldDescription()
         assertTrue("system not disengaged at the end of the cycle: $hold", hold.startsWith("disengaged"))
     }
@@ -200,7 +202,7 @@ class TestPlanSprint1 {
                     second.contains("load_accepted") || second.contains("load_refused"))
 
         // the first conversation completes normally
-        injectContainerPositioned()
+        injectContainerDetected()
         val hold = getHoldDescription()
         assertTrue("expected disengaged: $hold", hold.startsWith("disengaged"))
         assertEquals("only the slot of the FIRST conversation must be occupied: $hold",
@@ -210,7 +212,8 @@ class TestPlanSprint1 {
     /**
      * TP1.4 — Engagement timeout discards the reservation.
      * Given an accepted request with no container ever placed in the sensor
-     * area (MockSonar never emits). When the prefixed 30 s window expires.
+     * area (no sonar is deployed, no event is injected). When the prefixed
+     * 30 s window expires.
      * Then the state is disengaged and all the slots are still free.
      * The get_hold request is deferred by the service until it becomes
      * quiescent, i.e. until the window has expired: the test just waits for
@@ -252,7 +255,7 @@ class TestPlanSprint1 {
         val slotId = slotIdOf(reply)
         assertNotNull("could not read the reserved slot id from: $reply", slotId)
 
-        injectContainerPositioned()
+        injectContainerDetected()
         val hold = getHoldDescription()   // deferred until the trip is over
         CommUtils.outgreen("TP1.5 hold after the cycle: $hold")
 

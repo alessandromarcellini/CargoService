@@ -1,0 +1,8 @@
+# sonarDistances.txt — statically configurable distance table of the simulated
+# sonar (committente answer, question 5: deterministic, reproducible runs).
+# The sonar publishes one value per second, cycling through this list.
+# Detection happens when D < DFREE/2 (DFREE = 3): a value of 1 (or 0) is a
+# container detected at the IOPort; a value of 3 means the port area is free.
+#
+# Default cycle: 10 s of free port, then one detection.
+3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1

@@ -1,85 +1,181 @@
-- cargorobot in the same context of cargoservice
-- see if handle load request branches are mutually exclusive
+
+
+TO CHANGE: 
+
+se il robot non riesce a raggiungere il target richiesto farò in modo di non accettare mai più nuove richieste
+
+se non ci sono altre richieste il robot finito di posizionare il container allo slot giusto torna alla home
+
+se è out of service la hold il servizio rimane così senza cambiare stato
+
+le nuove richieste in arrivo mentre l'applicazione è in funzione sono impedite: il cargoservice deve fare in modo che l'IO port venga inibita
+
+sistemare il sonar in modo che per le distanze non le generi in modo casuale (i test hanno bisogno di avere delle situazioni deterministiche e riproducibili), bensì trovare un altro modo di generare distanze (magari leggendole da una tabella, configurabile staticamente), finchè non si introdurrà nel sistema il sonar fisico collegato al pico, il quale emetterà distanze misurate realmente
+
+per il sonar dobbiamo analizzare la nostra scelta di come vogliamo modellarre questa entità: vogliamo farla diventare un entità proattiva scollegata dal resto dell'applicazione, per cui il sonar emette eventi con la distanza di quello che rileva e il cargoservice si occuperà di mettersi in ascolto una volta presa in carico una nuova richiesta, per l'intera time window di 30s se arriva qualche evento pubblicato dal sonar
+
+
+
+cargorobot e cargoservice eseguono sullo stesso nodo e contesto: la motivazione è un risparmio di risorse iniziale del committente, il quale volendo un giorno potrà decidere di separare i due componenti sw su nodi diversi
+
+decidere come fare a far si che venga mostrato lo stato della hold (mantenuto all'interno del cargoservice) verso l'esterno (per scopo di test)? o gli viene chiesto o lo test4_engagementTimeout
+
+giustificare e spiegare meglio come abbiamo deciso di modificare il modo in cui modellare le informazioni relative alla hold nel sistema: stato hold, slot e coordinate dei vari target nel cargoservice e rappresentazione logica mappa hold nel robotsmart26. Bisogna spiegare il fatto che l'allineamento tra mappa hoìd nel robotsmart26 e informazioni su mappa hold mantenute nel cargoservice vanno fatte in fase di configurazione iniziale del sistema out of band. La scelta di questo approccio è giustificata dalla semplicità introdotta nel progetto (rasoio di hoccam) e dall'accelerazione dei tempi di sviluppo. Occore dire che se un giorno ci fosse la necessità di modellare la hold come entità unica a sè, che racchiuda le informazioni di stato e la mappa dell'ambiente, si può fare tranquillamente e specificare il motivo.
+
+
+
+modificare i test in modo che venga compresa anche l'interazione del cargorbot con il robotsmart26 (bisogna testare anche questa cosa prima o poi)
+
+aggiungere nella sezione test plan la spiegazione di come raggiungiamo l'osservabilità del sistema e descrivere le nuove interazioni aggiunte
+
+
+
+
+i devices emettono eventi e comunicano attraverso il protoccollo mqtt con il componente applicativo qak cargoservice: la scelta di adapter che traducono i messaggi inviati dai devices (led+sonar) installati sul pico è stata scartata in quanto il metamodello qak gestisce intrinsecamente scambio di messaggi mqtt. L'unica motivazione per il contrario potrebbe essere data dai principi delle clean architectures
+
+
+
+quando ci accorgiamo che dobbiamo eseguire delle modifiche al sistema, specificare che queste sono rese molto più flessibili e agevoli dal fatto che stiamo lavorando su un modello
+
+sistemare nel file il seguente carattere che appare a schermo nel file html â€”, credo che sia dovuto al seguente carattere • 
+
+Dividere tutte le riflessioni fatte per gli argomenti qui sopra nelle sezioni corrette: Analisi del Problema o Progettazione
+
+
+ESAME
+
+demo + test automatici
+presentazione sottolinea i cambiamenti nel nostro metodo di lavoro dopo aver seguito questo corso e passaggi chiave del nostro processo di sviluppo
+==========================================================================
+CHANGES 2026-07-20 (evening) — sprint1_v1.html updated after the committente
+alignment call (DOCUMENT ONLY: code alignment deliberately deferred)
+==========================================================================
+17. Requirement analysis: the five open questions now carry the committente
+    answers: Q1 robot failure => permanently stop accepting requests (mapped
+    to the terminal Out of service condition, coherent with Q4); Q2 HOME only
+    when no other request is pending; Q3 new requests PREVENTED: cargoservice
+    inhibits the IOPort (retrylater guard kept as defensive contract); Q4 no
+    recovery from Out of service; Q5 sonar = proactive decoupled publisher of
+    distance events, no trigger; distances deterministic (static table) until
+    the physical pico sonar arrives.
+18. Problem analysis: cargorobot co-located with cargoservice (same node and
+    context, committente resource saving; separable later by deployment
+    description only) — structure table + SVG updated (ctxrobot box removed);
+    "The hold model backtracking" moved here from Design and expanded
+    (registry vs logical map, out-of-band configuration-time alignment,
+    Occam's razor + development speed, reversibility note); new section
+    "How is the hold state observed from the outside?" (push vs pull, pull
+    chosen); interaction table: checkMeasurement+containerPositioned replaced
+    by sonar_distance(D) event, inhibit_ioport/enable_ioport added; behaviour
+    tables updated (accept_load_request listens to distance events and
+    inhibits ioport; abort_transfer -> terminal Out of service, code update
+    pending; container_stored HOME-if-idle; ioport 'inhibited' state; sonar
+    proactive).
+19. Test plans: new subsection on how observability is achieved
+    (get_hold/preset_hold + quiescence barrier + event-based detection);
+    TP1.3/1.4/1.5 rephrased for the new sonar contract; NEW TP1.6
+    (integration cargorobot <-> robotsmart26, out of the default gradlew
+    test run); note that the shown JUnit code realizes the pre-call contract
+    and will be updated at the next code alignment.
+20. Design: contexts snippet without ctxrobot (co-location justified);
+    backtracking section reduced to its technology binding (RobotSmart26);
+    NEW section "Device integration": pico devices (sonar+led) emit events
+    over MQTT directly into qak (per-device adapters DISCARDED: qak natively
+    handles MQTT; the only counter-argument is clean-architecture purity,
+    recorded); sonar distance source = statically configurable table.
+21. Encoding fixed: <meta charset="utf-8"> added and all literal non-ASCII
+    characters (em dashes, bullets) converted to HTML entities — this was
+    the cause of the on-screen "â€”" artifacts.
+NOTE: every model change above is annotated in the document with the reason
+why it is cheap: interactions and behaviours are declared in the executable
+model, so a policy change is a transition retarget, not a code rework.
+
+22. Corrections on sprint1_v1.html: removed every doc/code-asynchrony note
+    (changes will be implemented before Sprint 2); added the explicit
+    rationale for unifying robot failure with the terminal Out of service
+    condition (Q1+Q4, three reasons); refined the ioport inhibition
+    semantics: while engaged/piloting, the ioport answers RETRY LATER
+    locally to pushbutton presses (no conversation reaches the service);
+    behaviour table gains the terminal out_of_service state; JUnit section
+    and test snippet moved to the target contract (sonar_distance(1)
+    injection); fixed the residual contradictions with Q4 (no recovery in
+    the Sprint 2 goal, out-of-service no longer a mere "skeleton").
+
+23. Resolutions applied to sprint1_v1.html (student decisions, 2026-07-20):
+    (1) no reason-carrying inhibit needed: the retry-later reason travels in
+        the load_retrylater(HOLDSTATE) argument (engaged|out_of_service);
+        stated explicitly that the system NEVER queues load requests (the
+        whole operation, window AND trip, answers immediate retrylater to
+        requests that reach the service; ioport simply does not send while
+        inhibited). Observation interactions (get_hold/preset_hold) remain
+        deliberately served at quiescence.
+    (2) HOME after EVERY cycle: with the ioport inhibited and no queueing,
+        the committente condition "no pending request" is always true; the
+        conditional skip-HOME branch could never trigger in production and
+        would leave the robot parked at a slot.
+    (3) out_of_service reset allowed FOR TESTS ONLY via preset_hold
+        (controllability backdoor, P5); no recovery in production (Q4).
+    (5) static distance table = deterministic PROTOTYPE/DEMO runs (and
+        TP1.6); the unit TestPlans keep the silent mock + event injection.
+    CODE IMPACT to remember at implementation: the no-queueing policy
+    extends the retrylater guard to the TRIP states too -> each move state
+    needs a reply-wait twin so that serving a request does not re-send the
+    robot command.
+
+24. Guard scope settled (student decision after requirement re-read):
+    service-side retrylater guard stays on the ENGAGEMENT WINDOW only (the
+    sole phase reachable by the asynchronous-inhibition race); during the
+    TRIP the requirement branch "retrylater if the IOPort is currently
+    occupied by a container" is realized by the INHIBITED IOPORT locally on
+    the display (port occupied <=> operation in progress). No twin states on
+    the robot-piloting states. New committente question added (port occupied
+    with no operation in progress -> strict reading would need the service
+    to remember the last sonar distance while disengaged; deferred).
 
 ==========================================================================
-CHANGES 2026-07-20 — code aligned to sprint1_v0.html (doc = reference)
+CHANGES 2026-07-20 (night) — CODE aligned to sprint1_v1.html + doc closure
 ==========================================================================
+25. Document: guard row + Sprint 2 goal now state the delega front-desk as
+    the planned Sprint 2 evolution (web GUI, concurrent customers); Design
+    gains "From model to code: two realization notes" (payload-guarded
+    transitions via evaluation states; EXACT one-shot 30 s window timer,
+    stale firings filtered on WindowStart -> the old window-restart
+    trade-off disappears); Deployment now uses the dedicated gradle tasks.
+26. Code implemented and TESTED (all 5 TestPlans pass; window measured at
+    ~30.1 s):
+    - cargoservice.pl / cargoservicetest.pl / cargoservice_sprint1.qak
+      rewritten to the post-call contract: sonar_distance(D) event,
+      inhibit_ioport/enable_ioport, routing dispatches, no checkMeasurement,
+      no containerPositioned, no ctxrobot (cargorobot co-located).
+    - Cargoservice.kt: inhibition at acceptance + enable at disengage;
+      one-shot 30 s TimerActor (NOT the stateTimer idiom, which restarts on
+      re-entry and is killed on every transition) + eval_window_expiry
+      filtering stale timeouts on WindowStart; eval_distance evaluates
+      D < DFREE/2.0 (double: integer division would make D=1 undetectable);
+      abort_transfer -> terminal out_of_service (Q1+Q4) serving
+      retrylater(out_of_service)/get_hold/preset_hold (test-only reset);
+      HOME after every cycle (Q2 decision).
+    - Sonar.kt: proactive publisher, 1 value/s, cyclic table from
+      sonarDistances.txt (NEW file, commented; fallback list built in).
+    - Ioport.kt: inhibited state (display 'retry later, operation in
+      progress' = requirement branch "IOPort occupied"); enable_ioport
+      returns to the console loop; console limitation documented.
+    - Tests: MockSonar.kt DELETED, MockIoport.kt NEW (absorbs
+      inhibit/enable); TestPlanSprint1 injects sonar_distance(1)
+      (injectContainerDetected); MainCtxrobot.kt deleted.
+    - build.gradle: NEW tasks runCtxCargoservice / runCtxDevices /
+      runCtxIoport (stdin wired for the ioport console) -> the end user
+      never edits the build file; deployment = 3 processes.
 
-A) Doc/code alignment (cargoservice_sprint1.qak + regenerated-by-hand .kt + cargoservice.pl)
-1. Contexts/ports aligned to the Design section: ctxcargoservice 8030,
-   ctxioport 8031, ctxrobot 8032 (NEW context), ctxdevices 8033.
-   cargorobot moved from ctxcargoservice to ctxrobot (closes note 1 above).
-2. handle_load_request: the three answer branches are now MUTUALLY EXCLUSIVE
-   (if / else-if / else). Before, a request received while engaged produced
-   TWO replies (retrylater + accepted/refused) and corrupted the reservation
-   of the ongoing trip (closes note 2 above; P1, defect inherited from S0).
-3. Trip states renamed as in the Behaviour table: move_to_ioport,
-   move_to_slot5, marking_pause, move_to_reserved_slot, container_stored,
-   abort_transfer. container_stored now occupies THE RESERVED slot
-   (CurrentSlotToFill.content = Container(), not "first free") and then sends
-   the robot HOME; both HOME replies end in switch_to_disengaged (Q2).
-   switch_to_disengaged now also DISCARDS the reservation
-   (CurrentSlotToFill = null), as the doc states.
-4. Out-of-service logic removed from the flows (doc: deferred to Sprint 2):
-   sonar no longer emits outOfService; the set_outofservice state and the
-   whenEvent outOfService transition are gone. The outOfService Event stays
-   declared as the skeleton the doc mentions.
-5. Sonar aligned to the doc behaviour: one measurement per activation,
-   detection if D < DFREE/2, otherwise retry after 1 s via a state loop
-   (sonar_measure_again/done dispatches); no busy wait, no 3 s failure branch.
-6. Lowercase payload atoms: load_retrylater(engaged) instead of (ENGAGED)
-   (uppercase = prolog variable in the message term); Ioport display check
-   updated to "engaged".
-7. Hold model backtracking (doc, Design): IHold.java and Hold.java DELETED.
-   The business registry (slot list + state + station coordinates) lives in
-   the cargoservice actor; ISlot/Slot/ICell/Cell/IContainer/Container/
-   HoldState/IDisplay/Display remain.
-
-B) New: JUnit TestPlans (TP1.1..TP1.5) + what was needed to run them
-8. New test-support messages (P5): get_hold -> hold_state(DESC) and
-   preset_hold(full|empty) -> preset_done(done); served by serve_get_hold /
-   serve_preset_hold, reachable only from waiting (quiescent points).
-9. Engagement window now serves concurrent load_requests with
-   retrylater(engaged) via twin states engaged_retrylater/engaged_window
-   (realizes committente Q3; needed by TP1.3). Trade-off accepted: serving a
-   concurrent request re-opens the 30 s window. Residual deviation: requests
-   arriving during the TRIP are deferred by the actor message store and
-   served (accepted) at the end of the cycle — recorded as a question.
-10. New files: cargoservicetest.pl (test deployment: real cargoservice +
-    MockCargorobot + MockSonar co-located in ctxcargoservice, port 8030),
-    test/it/unibo/mock/MockCargorobot.kt, test/it/unibo/mock/MockSonar.kt,
-    test/it/unibo/test/TestPlanSprint1.kt (JUnit 4, self-contained: the test
-    JVM starts the configuration itself; run with: gradlew test).
-11. build.gradle: test sourceSet mapped to the top-level test/ folder, JUnit 4
-    dependency, useJUnit() + testLogging; main kotlin sourceSet declared
-    explicitly next to java.
-
-B2) Bug found and fixed while running the TestPlans
-15. qak TimerActor bug with underscored state names: it derives its owner
-    actor from the timeout-event name via substringBeforeLast("_"), so
-    "local_tout_cargoservice_accept_load_request" resolved to the
-    non-existent actor "cargoservice_accept_load" -> the timer thread looped
-    forever ("TimerActor TOO FAST ERROR") and the 30 s window NEVER expired
-    (also latent in the Sprint0 code). Fix: timeout-event suffix must be a
-    single token -> "local_tout_"+name+"_w30accept" / "_w30window".
-    TP1.4 now measures the window at ~30.0 s.
-
-D) Test run results (2026-07-20, unit variant, gradlew test)
-    test1_loadAcceptedOnEmptyHold  PASSED  (load_accepted(1))
-    test2_loadRefusedOnFullHold    PASSED  (load_refused, 4x occupied kept)
-    test3_retryLaterWhenEngaged    PASSED  (load_retrylater(engaged))
-    test4_engagementTimeout        PASSED  (~30.0 s, reservation discarded)
-    test5_completeLoadCycle        PASSED  (disengaged_occupied_free_free_free)
-
-C) Document (sprint1_v0.html)
-12. Behaviour table: added the engaged_retrylater/engaged_window row;
-    accept_load_request row lists the load_request transition.
-13. Test plans section: new "JUnit implementation" subsection with the test
-    architecture, the changes needed to execute the plans, and the code of
-    TestPlanSprint1 + MockCargorobot + cargoservicetest.pl.
-14. Deployment step 5: tests are self-contained (nothing must be running).
-16. Test plans section: added "How to run the TestPlans" — 8 step-by-step
-    instructions for the committente (prerequisites, working directory, free
-    port 8030, gradlew test command, do-not-interrupt warning for the 30 s of
-    TP1.4, where to read the report, cleanTest for re-runs, pointer to the
-    integration variant in Deployment).
+27. TP1.6 IMPLEMENTED (was documentation only): new files
+    cargoserviceintegrationtest.pl (real cargoservice + REAL Cargorobot
+    adapter + external robotsmart context + MockIoport) and
+    test/it/unibo/test/IntegrationTestPlanSprint1.kt (fail-fast probe on
+    127.0.0.1:8020 with instructions; complete cycle; asserts reserved slot
+    occupied + disengaged; an out_of_service outcome = coordinate
+    misalignment, the defect the plan exists to catch). build.gradle: the
+    default test task now EXCLUDES IntegrationTestPlan*; new task
+    'gradlew integrationTest' (always re-runs). Doc updated (TP1.6 section +
+    how-to-run integration step). NOT YET EXECUTED: requires the robot
+    environment (docker + robotsmart26) on the dev machine — first run is
+    on the team.
