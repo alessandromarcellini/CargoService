@@ -577,7 +577,8 @@ div.imagedesc{
 		<tbody>
 			<tr><td><tt>waiting</tt> (disengaged)</td><td>Waits for load requests; serves the test-support interactions.</td><td>on <tt>load_request</tt> &rarr; <tt>handle_load_request</tt>; on <tt>get_hold</tt> / <tt>preset_hold</tt> &rarr; serve and return</td></tr>
 			<tr><td><tt>handle_load_request</tt></td><td>Evaluates, in mutually exclusive order: (1) state not disengaged &rarr; <tt>load_retrylater</tt>; (2) no free slot &rarr; <tt>load_refused</tt>; (3) otherwise remember the reserved slot, set state engaged, <tt>load_accepted(SLOTID)</tt>. Exactly one reply per request (P1).</td><td>&rarr; <tt>accept_load_request</tt> on acceptance, else &rarr; <tt>waiting</tt></td></tr>
-			<tr><td><tt>accept_load_request</tt> (engaged)</td><td>Triggers the sonar measurement; waits for the detection within the prefixed 30 s window.</td><td>on <tt>containerPositioned</tt> &rarr; <tt>move_to_ioport</tt>; on window expired &rarr; <tt>switch_to_disengaged</tt></td></tr>
+			<tr><td><tt>accept_load_request</tt> (engaged)</td><td>Triggers the sonar measurement; waits for the detection within the prefixed 30 s window.</td><td>on <tt>containerPositioned</tt> &rarr; <tt>move_to_ioport</tt>; on window expired &rarr; <tt>switch_to_disengaged</tt>; on <tt>load_request</tt> &rarr; <tt>engaged_retrylater</tt></td></tr>
+			<tr><td><tt>engaged_retrylater</tt> / <tt>engaged_window</tt></td><td>Realization of committente question 3 (verified by TP1.3): a request received while engaged is answered <tt>load_retrylater(engaged)</tt>. The answer is served in a twin state (<tt>engaged_retrylater</tt> &rarr; <tt>engaged_window</tt>) so that the sonar is <i>not</i> re-triggered; the accepted trade-off is that serving a concurrent request re-opens the 30 s window from that moment. Requests arriving during the <i>trip</i> are instead deferred by the actor message store and served at the end of the cycle: this residual deviation from the adopted interpretation of Q3 is recorded for the committente.</td><td>same transitions as <tt>accept_load_request</tt> (minus the sonar trigger)</td></tr>
 			<tr><td><tt>move_to_ioport</tt> / <tt>move_to_slot5</tt> / <tt>move_to_reserved_slot</tt></td><td>One trip leg each: resolve the station coordinates from the hold model and ask the robot to reach them.</td><td>on <tt>targetReached</tt> &rarr; next leg; on <tt>targetUnreachable</tt> &rarr; <tt>abort_transfer</tt> (Q1)</td></tr>
 			<tr><td><tt>marking_pause</tt></td><td>Emulates the marker: fixed ~5 s pause (committente clarification, P6).</td><td>&rarr; <tt>move_to_reserved_slot</tt></td></tr>
 			<tr><td><tt>container_stored</tt></td><td>Marks the reserved slot occupied in the hold model, then sends the robot HOME.</td><td>on <tt>targetReached</tt> or <tt>targetUnreachable</tt> &rarr; <tt>switch_to_disengaged</tt> (the load is completed either way, Q2)</td></tr>
@@ -638,6 +639,274 @@ div.imagedesc{
 	<br><br>
 
 	<b>Note.</b> The out-of-service branch has no test plan in this sprint: it is out of the declared goal and is deferred to Sprint 2 together with its logic.
+
+	<br><br>
+	<h3>JUnit implementation (TestPlanSprint1)</h3>
+	The five plans are implemented as one JUnit&nbsp;4 class, <tt>test/it/unibo/test/TestPlanSprint1.kt</tt>, runnable with a single command (<tt>gradlew test</tt>) and with <b>no external process</b>: the test JVM starts, once, the qak <b>test configuration</b> described by <tt>cargoservicetest.pl</tt>.
+	<br><br>
+	<b>The test configuration (unit variant of TP1.5).</b> The configuration deploys the <i>real</i> <tt>cargoservice</tt> together with two test doubles, all co-located in <tt>ctxcargoservice</tt>:
+	<ul>
+		<li><tt>MockCargorobot</tt> replaces the robot adapter: it honours the same <tt>reachTarget</tt>/<tt>targetReached</tt> contract but confirms every target, so the assertions isolate the business logic (no robotsmart subsystem needed);</li>
+		<li><tt>MockSonar</tt> absorbs <tt>checkMeasurement</tt> and <i>never</i> emits: the detection is injected by the test itself as an external <tt>containerPositioned</tt> event, which makes every plan deterministic (in particular TP1.4, which must observe <i>no</i> detection for 30 s — impossible with the random simulated sonar).</li>
+	</ul>
+	Because a qak actor is bound to its context only by the deployment description (<i>location transparency</i>), the service code under test is byte-for-byte the production one: only the <tt>.pl</tt> file changes. The test class plays the ioport boundary over TCP (port 8030) using the same request/reply contract of the model.
+	<br><br>
+
+	<h4>Changes introduced to make the TestPlans executable</h4>
+	<ol>
+		<li><b>Mutually exclusive answer branches (P1).</b> The defect inherited from Sprint&nbsp;0 (sequential checks in <tt>handle_load_request</tt>, so one request could produce two replies) is corrected: the three branches are now an if / else-if / else chain, and every branch ends the conversation with exactly one reply.</li>
+		<li><b>Observability/controllability messages (P5).</b> New in the executable model: <tt>get_hold(none)</tt> with reply <tt>hold_state(HOLDSTATE)</tt> (e.g. <tt>disengaged_free_occupied_free_free</tt>) and <tt>preset_hold(full|empty)</tt> with reply <tt>preset_done(done)</tt>, served by the states <tt>serve_get_hold</tt>/<tt>serve_preset_hold</tt> reachable from <tt>waiting</tt> only. They give every plan a machine-checkable <i>Given</i> and <i>Then</i> without touching the business conversation.</li>
+		<li><b>Lowercase payload atoms (message-as-contract).</b> The retrylater answer now carries <tt>load_retrylater(engaged)</tt> instead of <tt>load_retrylater(ENGAGED)</tt>: an uppercase argument is parsed as a logical <i>variable</i> in the message term, so it is not a value a test (or the ioport) can match on. The ioport display logic was updated accordingly.</li>
+		<li><b>Engagement window serves concurrent requests (Q3, TP1.3).</b> A <tt>load_request</tt> received while engaged is answered <tt>load_retrylater(engaged)</tt> via the twin states <tt>engaged_retrylater</tt>/<tt>engaged_window</tt> (see the Behaviour table). Without this the FSM would defer the second request and answer it <tt>load_accepted</tt> at the end of the cycle, contradicting the adopted interpretation of question&nbsp;3.</li>
+		<li><b>Build changes.</b> <tt>build.gradle</tt>: the test source set is mapped to the top-level <tt>test</tt> folder (the Gradle default <tt>src/test/kotlin</tt> would compile nothing and pass vacuously), JUnit&nbsp;4 is declared, and the <tt>test</tt> task uses <tt>useJUnit()</tt> with the standard streams visible.</li>
+		<li><b>Test configuration artifacts.</b> New files: <tt>cargoservicetest.pl</tt> (deployment of the unit variant) and <tt>test/it/unibo/mock/MockCargorobot.kt</tt>, <tt>test/it/unibo/mock/MockSonar.kt</tt>.</li>
+		<li><b>Timer bug found by TP1.4.</b> The qak <tt>TimerActor</tt> resolves its owner actor from the timeout-event name with <tt>substringBeforeLast("_")</tt>: with a state named <tt>accept_load_request</tt> the generated event <tt>local_tout_cargoservice_accept_load_request</tt> is parsed as owner "cargoservice_accept_load", which does not exist — the timer thread loops forever and the 30&nbsp;s window <i>never expires</i>. The timeout-event suffix was renamed to a single token (<tt>..._w30accept</tt>, <tt>..._w30window</tt>); TP1.4 now measures the window at ~30.0&nbsp;s. This is a concrete return on the "test plans must be automatable" requirement: the defect was invisible in any manual run.</li>
+	</ol>
+	<br>
+
+	<h4>How to run the TestPlans (step-by-step instructions for the committente)</h4>
+	The following procedure runs the automated TestPlans in their <b>unit variant</b>: it requires no Docker, no robot environment and no other process — the test JVM starts everything it needs by itself.
+	<br><br>
+	<ol>
+		<li><b>Prerequisites.</b> A Java JDK 21 installed and reachable (check with <tt>java -version</tt>); the project repository cloned from <a href="https://github.com/alessandromarcellini/CargoService" target="_blank">github.com/alessandromarcellini/CargoService</a>. Nothing else is needed for the unit variant.</li>
+		<li><b>Open a terminal in the sprint folder</b>: <tt>CargoService/Sprint1</tt> (the folder that contains <tt>build.gradle</tt>, <tt>cargoservicetest.pl</tt> and <tt>sysRules.pl</tt>). The tests must be launched from here: the test configuration reads the two <tt>.pl</tt> files from the working directory.</li>
+		<li><b>Make sure port 8030 is free.</b> If a cargoservice context (or a previous, interrupted test run) is still alive, close it first: the test JVM must be able to open TCP port 8030 itself. On Windows a leftover process can be found with <tt>netstat -ano | findstr 8030</tt>.</li>
+		<li><b>Launch the tests</b>:
+			<ul>
+				<li>Windows: <tt>gradlew.bat -b build.gradle test</tt></li>
+				<li>Linux / macOS: <tt>./gradlew -b build.gradle test</tt></li>
+			</ul>
+			The first launch may take a few minutes because Gradle downloads the declared dependencies; the following launches are fast.</li>
+		<li><b>Wait for the run to finish — do not interrupt it.</b> The whole suite lasts about one minute: TP1.4 intentionally waits the full 30&nbsp;s engagement window (that wait <i>is</i> the test). The console shows the progress of each plan (<tt>passed</tt>/<tt>failed</tt>) together with the messages exchanged with the service.</li>
+		<li><b>Read the outcome.</b> Expected result: <tt>BUILD SUCCESSFUL</tt> with 5 tests completed, 0 failed. A browsable report is generated in <tt>build/reports/tests/test/index.html</tt>, with the standard output of every plan attached.</li>
+	</ol>
+	<br>
+
+	<h4>Testing (results)</h4>
+	All five TestPlans pass against the test configuration (single command, <tt>gradlew test</tt>):
+	<pre>
+PASSED  test1_loadAcceptedOnEmptyHold      reply: load_accepted(1); hold: disengaged after the cycle
+PASSED  test2_loadRefusedOnFullHold        reply: load_refused(none); hold: disengaged_occupied_occupied_occupied_occupied
+PASSED  test3_retryLaterWhenEngaged        reply: load_retrylater(engaged); first conversation unaffected (1 slot occupied)
+PASSED  test4_engagementTimeout            window measured at ~30.0 s; hold: disengaged_free_free_free_free (reservation discarded)
+PASSED  test5_completeLoadCycle            hold: disengaged_occupied_free_free_free (the RESERVED slot, and only it, occupied)
+	</pre>
+	<br>
+
+	<h4>The test code</h4>
+	<pre>
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+class TestPlanSprint1 {
+
+    companion object {
+        private const val HOST = "localhost"
+        private const val PORT = 8030          // ctxcargoservice, from cargoservice_sprint1.qak
+
+        @BeforeClass
+        @JvmStatic
+        fun startTestConfiguration() {
+            CommUtils.outcyan("TestPlanSprint1 | starting the qak test configuration (cargoservicetest.pl)")
+            thread(isDaemon = true) {
+                runBlocking {
+                    QakContext.createContexts(
+                        HOST, this, "cargoservicetest.pl", "sysRules.pl", "ctxcargoservice"
+                    )
+                }
+            }
+            Thread.sleep(5000)  // let the context server and the actors boot
+        }
+    }
+
+    private var conn: Interaction? = null
+
+    @Before
+    fun setup() {
+        try {
+            conn = TcpClientSupport.connect(HOST, PORT, 10)
+        } catch (e: Exception) {
+            fail("TCP connection error towards the test configuration ($HOST:$PORT): ${e.message}")
+        }
+    }
+
+    @After
+    fun teardown() {
+        conn?.close()
+    }
+
+    // ---------------------------------------------------------------- helpers
+
+    private fun request(msgId: String, content: String): String {
+        val envelope = "msg($msgId,request,testunit,cargoservice,$content,1)"
+        val reply = conn!!.request(envelope)
+        assertNotNull("no reply received for $msgId", reply)
+        return reply.toString()
+    }
+
+    private fun loadRequest(): String = request("load_request", "load_request(none)")
+
+    /** Presets the hold (Given); the reply is also a quiescence barrier. */
+    private fun presetHold(config: String) {
+        val reply = request("preset_hold", "preset_hold($config)")
+        assertTrue("preset_hold($config) not confirmed (spurious reply pending?): $reply",
+                   reply.contains("preset_done"))
+    }
+
+    /** Reads the observable hold description (Then + quiescence barrier). */
+    private fun getHoldDescription(): String {
+        val reply = request("get_hold", "get_hold(none)")
+        assertTrue("expected hold_state but got (spurious reply pending?): $reply",
+                   reply.contains("hold_state"))
+        val m = Regex("""hold_state\(\s*([a-z_]+)\s*\)""").find(reply)
+        assertNotNull("could not parse the hold description from: $reply", m)
+        return m!!.groupValues[1]       // e.g. disengaged_free_occupied_free_free
+    }
+
+    /** Injects the sonar detection as the external event the model expects. */
+    private fun injectContainerPositioned() {
+        conn!!.forward("msg(containerPositioned,event,sonar,none,containerPositioned(none),1)")
+    }
+
+    private fun slotIdOf(reply: String): Int? =
+        Regex("""load_accepted\(\s*(\d+)\s*\)""").find(reply)?.groupValues?.get(1)?.toIntOrNull()
+
+    private fun occupiedCount(holdDesc: String): Int =
+        Regex("occupied").findAll(holdDesc).count()
+
+    // -------------------------------------------------------------- TestPlans
+
+    /** TP1.1 — load accepted on an empty hold (inherited from TP0.1). */
+    @Test(timeout = 60000)
+    fun test1_loadAcceptedOnEmptyHold() {
+        presetHold("empty")
+
+        val reply = loadRequest()
+        assertTrue("expected load_accepted but got: $reply", reply.contains("load_accepted"))
+        assertFalse("wrong branch taken: $reply",
+                    reply.contains("load_refused") || reply.contains("load_retrylater"))
+        val slotId = slotIdOf(reply)
+        assertNotNull("could not read the reserved slot id from: $reply", slotId)
+        assertTrue("reserved slot id out of range (expected 1..4): $slotId", slotId!! in 1..4)
+
+        // close the engagement (detection + full trip) so that the system is
+        // quiescent again; getHoldDescription() is also the one-reply guard
+        injectContainerPositioned()
+        val hold = getHoldDescription()
+        assertTrue("system not disengaged at the end of the cycle: $hold", hold.startsWith("disengaged"))
+    }
+
+    /** TP1.2 — load refused when the hold is full (deferred from Sprint 0). */
+    @Test(timeout = 60000)
+    fun test2_loadRefusedOnFullHold() {
+        presetHold("full")
+
+        val reply = loadRequest()
+        assertTrue("expected load_refused but got: $reply", reply.contains("load_refused"))
+        assertFalse("wrong branch taken: $reply",
+                    reply.contains("load_accepted") || reply.contains("load_retrylater"))
+
+        val hold = getHoldDescription()
+        assertTrue("expected disengaged: $hold", hold.startsWith("disengaged"))
+        assertEquals("the four slots must still be occupied: $hold", 4, occupiedCount(hold))
+    }
+
+    /** TP1.3 — retry later when the system is engaged (deferred from Sprint 0). */
+    @Test(timeout = 90000)
+    fun test3_retryLaterWhenEngaged() {
+        presetHold("empty")
+
+        val first = loadRequest()
+        assertTrue("first request must be accepted: $first", first.contains("load_accepted"))
+        Thread.sleep(500)   // let the service enter the engagement window
+
+        val second = loadRequest()
+        assertTrue("expected load_retrylater but got: $second", second.contains("load_retrylater"))
+        assertTrue("the retrylater answer must carry the engaged state: $second",
+                   second.contains("engaged"))
+        assertFalse("wrong branch taken: $second",
+                    second.contains("load_accepted") || second.contains("load_refused"))
+
+        // the first conversation completes normally
+        injectContainerPositioned()
+        val hold = getHoldDescription()
+        assertTrue("expected disengaged: $hold", hold.startsWith("disengaged"))
+        assertEquals("only the slot of the FIRST conversation must be occupied: $hold",
+                     1, occupiedCount(hold))
+    }
+
+    /** TP1.4 — engagement timeout discards the reservation. */
+    @Test(timeout = 90000)
+    fun test4_engagementTimeoutDiscardsReservation() {
+        presetHold("empty")
+
+        val reply = loadRequest()
+        assertTrue("request must be accepted: $reply", reply.contains("load_accepted"))
+
+        val start = System.currentTimeMillis()
+        val hold = getHoldDescription()   // served only after the 30 s window
+        val elapsed = System.currentTimeMillis() - start
+
+        assertTrue("expected disengaged after the timeout: $hold", hold.startsWith("disengaged"))
+        assertEquals("the reservation must be discarded (no slot occupied): $hold",
+                     0, occupiedCount(hold))
+        assertTrue("the window closed too early (${elapsed} ms)", elapsed &gt;= 25000)
+    }
+
+    /** TP1.5 — complete load cycle (unit variant). */
+    @Test(timeout = 90000)
+    fun test5_completeLoadCycle() {
+        presetHold("empty")
+
+        val reply = loadRequest()
+        assertTrue("request must be accepted: $reply", reply.contains("load_accepted"))
+        val slotId = slotIdOf(reply)
+        assertNotNull("could not read the reserved slot id from: $reply", slotId)
+
+        injectContainerPositioned()
+        val hold = getHoldDescription()   // deferred until the trip is over
+
+        assertTrue("expected disengaged at the end of the cycle: $hold", hold.startsWith("disengaged"))
+        val parts = hold.split("_")       // [disengaged, slot1, slot2, slot3, slot4]
+        assertEquals("unexpected hold description: $hold", 5, parts.size)
+        assertEquals("the RESERVED slot ($slotId) must be occupied: $hold",
+                     "occupied", parts[slotId!!])
+        assertEquals("exactly one slot must be occupied: $hold", 1, occupiedCount(hold))
+    }
+}
+	</pre>
+	<br>
+	<b>The mock robot (test double).</b> Same constructor shape as the generated actors (it is instantiated by qak via reflection) and same message contract as the real adapter:
+	<pre>
+class MockCargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=false, isdynamic: Boolean=false ) :
+          ActorBasicFsm( name, scope, confined=isconfined, dynamically=isdynamic ){
+
+    override fun getInitialState() : String = "waiting"
+    override fun getBody() : (ActorBasicFsm.() -&gt; Unit){
+        return {
+            state("waiting") {
+                action { }
+                sysaction { }
+                transition(edgeName="tm00",targetState="serve",cond=whenRequest("reachTarget"))
+            }
+            state("serve") {
+                action {
+                    delay(150)
+                    CommUtils.outyellow("[MOCK CARGOROBOT] target confirmed (test double)")
+                    answer("reachTarget", "targetReached", "targetReached(ok)")
+                }
+                sysaction { }
+                transition( edgeName="goto",targetState="waiting", cond=doswitch() )
+            }
+        }
+    }
+}
+	</pre>
+	<tt>MockSonar</tt> is analogous: it consumes <tt>checkMeasurement</tt> (state <tt>absorb</tt>) and never emits. The deployment of the test configuration, <tt>cargoservicetest.pl</tt>, declares the same messages of the system and:
+	<pre>
+context(ctxcargoservice, "localhost",  "TCP", "8030").
+  qactor( cargoservice, ctxcargoservice, "it.unibo.cargoservice.Cargoservice").
+  qactor( cargorobot,   ctxcargoservice, "it.unibo.mock.MockCargorobot").
+  qactor( sonar,        ctxcargoservice, "it.unibo.mock.MockSonar").
+	</pre>
 </div>
 
 
@@ -681,8 +950,9 @@ ExternalQActor robotsmart context ctxrobotsmart
 		<li><b>Dependency inversion on passive resources:</b> the business logic depends on <tt>IDisplay</tt>, <tt>ISlot</tt> and <tt>IContainer</tt>, not on the concrete classes.</li>
 		<li><b>Observer (events):</b> the detection is a broadcast event, so the sonar does not know its consumers.</li>
 	</ul>
+</div>
 
-	
+
 <h2>Deployment</h2>
 <div class="remark">
 	Steps for an end user to run the Sprint 1 prototype:
@@ -692,7 +962,7 @@ ExternalQActor robotsmart context ctxrobotsmart
 		<li>Start the robot service: in the <tt>robotsmart26</tt> directory run <tt>./gradlew run</tt>;</li>
 		<li>Start the prototype contexts from <tt>CargoService/Sprint1</tt>, one process per context, with <tt>gradlew -b build.gradle run</tt>, setting <tt>application.mainClassName</tt> to the context main:
 			<tt>it.unibo.ctxcargoservice.MainCtxcargoserviceKt</tt>, <tt>it.unibo.ctxdevices.MainCtxdevicesKt</tt>, <tt>it.unibo.ctxrobot.MainCtxrobotKt</tt>, and last <tt>it.unibo.ctxioport.MainCtxioportKt</tt> (the ioport is the manual demo driver);</li>
-		<li>To run the automated Test Plans: <tt>gradlew -b build.gradle test</tt> from <tt>CargoService/Sprint1</tt>, with the cargoservice context running.</li>
+		<li>To run the automated Test Plans (unit variant): <tt>gradlew -b build.gradle test</tt> from <tt>CargoService/Sprint1</tt>. Nothing else has to be running: the test JVM starts by itself the test configuration described by <tt>cargoservicetest.pl</tt> (the real cargoservice plus the two mocks).</li>
 	</ol>
 </div>
 

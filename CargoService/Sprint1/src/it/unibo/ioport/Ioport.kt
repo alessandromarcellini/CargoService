@@ -87,7 +87,7 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 						                        currentMsg.msgContent()) ) { //set msgArgList
 								
 												val holdStateReceived = payloadArg(0)
-												if (holdStateReceived == "ENGAGED") {
+												if (holdStateReceived == "engaged") {
 													display.setState("retry later, another request is being served...") 
 												} else {
 													display.setState("retry later, the hold is currently out of service...") 

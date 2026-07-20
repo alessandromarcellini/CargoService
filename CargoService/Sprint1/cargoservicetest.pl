@@ -1,5 +1,13 @@
 %====================================================================================
-% cargoservice description   
+% cargoservice TEST configuration (unit variant of the TestPlans, sprint1_v0.html)
+%
+% The real cargoservice is deployed together with two test doubles:
+%   - cargorobot -> MockCargorobot : confirms every reachTarget (targetReached)
+%   - sonar      -> MockSonar      : absorbs checkMeasurement, never emits
+% All the actors are co-located in ctxcargoservice: thanks to the location
+% transparency of qak the service code is exactly the production one, only this
+% deployment description changes. The test client plays the ioport role via TCP
+% (port 8030) and injects the containerPositioned event when a TestPlan needs it.
 %====================================================================================
 request( load_request, load_request(none) ).
 reply( load_accepted, load_accepted(SlotId) ).  %%for load_request
@@ -19,23 +27,11 @@ event( containerPositioned, containerPositioned(none) ).
 request( reachTarget, reachTarget(TARGETX,TARGETY) ).
 reply( targetReached, targetReached(ARG) ).  %%for reachTarget
 reply( targetUnreachable, targetUnreachable(ARG) ).  %%for reachTarget
-request( buildPlan, buildPlan(PX,PY,TX,TY) ).
-reply( buildPlanDone, buildPlanDone(PLAN) ).  %%for buildPlan
-request( moverobot, moverobot(TARGETX,TARGETY,STEPTIME) ).
-reply( moverobotdone, moverobotdone(ARG) ).  %%for moverobot
-reply( moverobotfailed, moverobotfailed(PLANDONE,PLANTODO) ).  %%for moverobot
 %====================================================================================
 context(ctxcargoservice, "localhost",  "TCP", "8030").
-context(ctxioport, "localhost",  "TCP", "8031").
-context(ctxrobot, "localhost",  "TCP", "8032").
-context(ctxdevices, "localhost",  "TCP", "8033").
-context(ctxrobotsmart, "127.0.0.1",  "TCP", "8020").
- qactor( robotsmart, ctxrobotsmart, "external").
   qactor( cargoservice, ctxcargoservice, "it.unibo.cargoservice.Cargoservice").
  static(cargoservice).
-  qactor( cargorobot, ctxrobot, "it.unibo.cargorobot.Cargorobot").
+  qactor( cargorobot, ctxcargoservice, "it.unibo.mock.MockCargorobot").
  static(cargorobot).
-  qactor( sonar, ctxdevices, "it.unibo.sonar.Sonar").
+  qactor( sonar, ctxcargoservice, "it.unibo.mock.MockSonar").
  static(sonar).
-  qactor( ioport, ctxioport, "it.unibo.ioport.Ioport").
- static(ioport).

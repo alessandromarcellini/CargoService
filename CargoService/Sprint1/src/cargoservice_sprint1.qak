@@ -19,6 +19,18 @@ Dispatch checkMeasurement : checkMeasurement(none)
 Dispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
 Dispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
 
+// utility messages for the sonar measurement state-loop (no busy wait)
+Dispatch sonar_measure_done  : sonar_measure_done(none)
+Dispatch sonar_measure_again : sonar_measure_again(none)
+
+// observability / controllability messages for the automated TestPlans (P5)
+Request get_hold    : get_hold(none)
+Reply   hold_state  : hold_state(HOLDSTATE) for get_hold
+Request preset_hold : preset_hold(HOLDCONFIG)
+Reply   preset_done : preset_done(ARG) for preset_hold
+
+// declared as a skeleton for Sprint 2 (out-of-service logic deferred):
+// no component emits this event in the flows of this sprint
 Event    outOfService : outOfService(none)
 Event	 containerPositioned : containerPositioned(none)
 
@@ -41,16 +53,18 @@ Reply moverobotfailed: moverobotfailed(PLANDONE, PLANTODO) for moverobot
 // ----------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------
 
-Context ctxcargoservice ip [host="localhost" port=8019]
-Context ctxioport       ip [host="localhost" port=8021]
-Context ctxrobotsmart 	ip [host="127.0.0.1" port=8020]
-Context ctxdevices      ip [host="localhost" port=8023]
+Context ctxcargoservice ip [host="localhost" port=8030]
+Context ctxioport       ip [host="localhost" port=8031]
+Context ctxrobot        ip [host="localhost" port=8032]
+Context ctxdevices      ip [host="localhost" port=8033]
+
+Context ctxrobotsmart 	ip [host="127.0.0.1" port=8020]   // reused asset, port fixed by the committente
 
 // ----------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------
 
-// Declarating external qactor to 
+// Declarating external qactor to
 ExternalQActor robotsmart context ctxrobotsmart
 
 // ----------------------------------------------------------------------------------------------
@@ -58,45 +72,50 @@ ExternalQActor robotsmart context ctxrobotsmart
 // ----------------------------------------------------------------------------------------------
 
 QActor cargoservice context ctxcargoservice {
-	
+
 	import "it.unibo.Hold.*"
 
     [#
-    	
+
         var CurrentHoldState: HoldState = HoldState.DISENGAGED
-        
+
         var CurrentSlotToFill: ISlot? = null
-        
+
 		var IOPortX = 6
 		var IOPortY = 1
-		
+
 		var HomeX = 0
 		var HomeY = 0
-		
+
 		var Slot5X = 2
 		var Slot5Y = 6
-		
-		
+
+
 		var SlotsList: List<ISlot> = listOf(
 			Slot(1, 1, 2),
 	        Slot(2, 1, 5),
 	        Slot(3, 3, 2),
 	        Slot(4, 3, 5)
 	    )
-	    
+
 	    fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? {
 		    return slots.firstOrNull { slot -> slot.content == null }
 		}
-		
-		fun OccupyFirstFreeSlot(slots: List<ISlot>, container: IContainer): Boolean {
-		    val freeSlot = slots.firstOrNull { it.content == null }
-		    
-		    return if (freeSlot != null) {
-		        freeSlot.content = container
-		        true
-		    } else {
-		        false 
-		    }
+
+		// observable description of the hold (P5): all lowercase so that the
+		// payload is a legal message atom, e.g. disengaged_free_occupied_free_free
+		fun DescribeHold(): String {
+			val slotsDesc = SlotsList.joinToString("_") { slot -> if (slot.content == null) "free" else "occupied" }
+			return CurrentHoldState.toString().lowercase() + "_" + slotsDesc
+		}
+
+		// controllable Given for the TestPlans (P5): preset_hold(full) / preset_hold(empty)
+		fun ApplyPreset(config: String) {
+			for (slot in SlotsList) {
+				slot.content = if (config == "full") Container() else null
+			}
+			CurrentSlotToFill = null
+			CurrentHoldState = HoldState.DISENGAGED
 		}
     #]
 
@@ -111,118 +130,154 @@ QActor cargoservice context ctxcargoservice {
     }
     Transition t0
         whenRequest load_request -> handle_load_request
+        whenRequest get_hold     -> serve_get_hold
+        whenRequest preset_hold  -> serve_preset_hold
+
+    // ----------------------------------------------------
+    // test support (P5): observation, served at quiescent points
+    // ----------------------------------------------------
+    State serve_get_hold {
+    	[# val HoldDescription = DescribeHold() #]
+    	replyTo get_hold with hold_state : hold_state($HoldDescription)
+    }
+    Goto waiting
+
+    State serve_preset_hold {
+    	onMsg( preset_hold : preset_hold(HOLDCONFIG) ) {
+    		[# val Config = payloadArg(0) #]
+    		[# ApplyPreset(Config) #]
+    		replyTo preset_hold with preset_done : preset_done(done)
+    	}
+    }
+    Goto waiting
 
     State handle_load_request {
     	println("[CARGO SERVICE] evaluating load request...") color cyan
-    	
-    	if [# CurrentHoldState != HoldState.DISENGAGED #] { 
+    	// P1: the three answer branches are MUTUALLY EXCLUSIVE (defect found by
+    	// the TestPlan work of Sprint 0): exactly one reply per request
+    	if [# CurrentHoldState != HoldState.DISENGAGED #] {
     		println("[CARGO SERVICE] another container is being moved or the hold is 'out of service', replying with RETRY LATER.") color cyan
-    		replyTo load_request with load_retrylater : load_retrylater($CurrentHoldState)
-    		autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
-    	}
-    	
-    	[# CurrentSlotToFill = FindFirstFreeSlot(SlotsList) #]
-    	if [# CurrentSlotToFill == null #] { 
-    		println("[CARGO SERVICE] all slots are taken, replying with REFUSED.") color cyan
-    		replyTo load_request with load_refused : load_refused(none)
+    		[# val CurrentHoldStateLc = CurrentHoldState.toString().lowercase() #]
+    		replyTo load_request with load_retrylater : load_retrylater($CurrentHoldStateLc)
     		autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
     	}
     	else {
-    		println("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.") color cyan
-    		[# CurrentHoldState = HoldState.ENGAGED #]
-    		
-    		[# var CurrentSlotToFillId = CurrentSlotToFill!!.id #]
-    		replyTo load_request with load_accepted : load_accepted($CurrentSlotToFillId)
-    		
-    		autodispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
+    		[# CurrentSlotToFill = FindFirstFreeSlot(SlotsList) #]
+    		if [# CurrentSlotToFill == null #] {
+    			println("[CARGO SERVICE] all slots are taken, replying with REFUSED.") color cyan
+    			replyTo load_request with load_refused : load_refused(none)
+    			autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+    		}
+    		else {
+    			println("[CARGO SERVICE] setting holdstate to ENGAGED, replying with ACCEPTED and waiting for sonar message.") color cyan
+    			[# CurrentHoldState = HoldState.ENGAGED #]
+
+    			[# var CurrentSlotToFillId = CurrentSlotToFill!!.id #]
+    			replyTo load_request with load_accepted : load_accepted($CurrentSlotToFillId)
+
+    			autodispatch cargoservice_goto_accept_load_request : cargoservice_goto_accept_load_request(none)
+    		}
     	}
     }
     Transition t0
     	whenMsg cargoservice_goto_accept_load_request -> accept_load_request
     	whenMsg cargoservice_goto_waiting -> waiting
-    
+
+    // engagement window: trigger the sonar once, then wait for the detection
+    // within the prefixed 30 s window
     State accept_load_request {
-    	forward sonar -m checkMeasurement : checkMeasurement(none) 
+    	forward sonar -m checkMeasurement : checkMeasurement(none)
     }
     Transition t0
     	whenTime 30000 -> switch_to_disengaged
-    	whenEvent containerPositioned -> go_to_ioport
-    	whenEvent outOfService -> set_outofservice
-    	
+    	whenEvent containerPositioned -> move_to_ioport
+    	whenRequest load_request -> engaged_retrylater
+
+    // a request received while engaged is answered retrylater (committente
+    // question 3); served in a twin state so that the sonar is not re-triggered
+    State engaged_retrylater {
+    	println("[CARGO SERVICE] engaged: replying RETRY LATER to a concurrent request") color cyan
+    	[# val CurrentHoldStateLc = CurrentHoldState.toString().lowercase() #]
+    	replyTo load_request with load_retrylater : load_retrylater($CurrentHoldStateLc)
+    }
+    Goto engaged_window
+
+    State engaged_window {
+    	println("[CARGO SERVICE] still engaged, waiting for the container detection") color cyan
+    }
+    Transition t0
+    	whenTime 30000 -> switch_to_disengaged
+    	whenEvent containerPositioned -> move_to_ioport
+    	whenRequest load_request -> engaged_retrylater
+
     // ----------------------------------------------------
     // ----------------------------------------------------
     // ----------------------------------------------------
-    
-    // STEP 1: Move robot from Home to IOPort
-    State go_to_ioport {
+
+    // TRIP LEG 1: Move robot to the IOPort (pick the container up)
+    State move_to_ioport {
     	println("[CARGO SERVICE] Command: Moving robot to IOPort") color magenta
     	request cargorobot -m reachTarget : reachTarget($IOPortX, $IOPortY)
     }
     Transition t0
-    	whenReply targetReached     -> go_to_slot5
-    	whenReply targetUnreachable -> movement_failed
-    	
-    // STEP 2: Move robot from IOPort to Slot 5
-    State go_to_slot5 {
+    	whenReply targetReached     -> move_to_slot5
+    	whenReply targetUnreachable -> abort_transfer
+
+    // TRIP LEG 2: Move robot from IOPort to slot5 (the marking station)
+    State move_to_slot5 {
     	println("[CARGO SERVICE] Command: Moving robot to Slot5") color magenta
     	request cargorobot -m reachTarget : reachTarget($Slot5X, $Slot5Y)
     }
     Transition t0
-    	whenReply targetReached     -> wait_checkpoint
-    	whenReply targetUnreachable -> movement_failed
-    	
-    // STEP 3: Wait at Slot 5 (simulating marker device execution checkpoint)
-    State wait_checkpoint {
-    	println("[CARGO SERVICE] waiting for maker device delay...") color magenta
-    	delay 5000 
+    	whenReply targetReached     -> marking_pause
+    	whenReply targetUnreachable -> abort_transfer
+
+    // TRIP LEG 3: marking pause at slot5 (marker device emulated by a ~5 s delay,
+    // per committente clarification)
+    State marking_pause {
+    	println("[CARGO SERVICE] waiting for marker device delay...") color magenta
+    	delay 5000
     }
-    Goto go_to_final_slot
-    
-    // STEP 4: Move robot from Slot 5 to the designated Storage Slot
-    State go_to_final_slot {
-    	[# 
-    		var CurrentSlotToFillX = CurrentSlotToFill!!.x 
-    		var CurrentSlotToFillY = CurrentSlotToFill!!.y 
+    Goto move_to_reserved_slot
+
+    // TRIP LEG 4: Move robot from slot5 to the reserved slot
+    State move_to_reserved_slot {
+    	[#
+    		var CurrentSlotToFillX = CurrentSlotToFill!!.x
+    		var CurrentSlotToFillY = CurrentSlotToFill!!.y
     	#]
-    	println("[CARGO SERVICE] Command: Moving robot to designated Slot") color magenta
+    	println("[CARGO SERVICE] Command: Moving robot to the reserved Slot") color magenta
     	request cargorobot -m reachTarget : reachTarget($CurrentSlotToFillX, $CurrentSlotToFillY)
     }
     Transition t0
-    	whenReply targetReached     -> deposit_container
-    	whenReply targetUnreachable -> movement_failed
+    	whenReply targetReached     -> container_stored
+    	whenReply targetUnreachable -> abort_transfer
 
-	// STEP 5: Update logical storage model mapping status
-	State deposit_container {
-		println("[CARGO SERVICE] Robot reached final slot. Depositing container into model.") color magenta
-		[# OccupyFirstFreeSlot(SlotsList, Container()) #]
-	}
-	Goto go_home
-	
-	// STEP 6: Return robot back to Home station
-	State go_home {
-		println("[CARGO SERVICE] Command: Moving robot back to Home ($HomeX, $HomeY)") color magenta
+	// TRIP END: mark the RESERVED slot occupied in the hold model, then send the
+	// robot back HOME (committente question 2)
+	State container_stored {
+		println("[CARGO SERVICE] container stored: marking the reserved slot occupied, sending robot HOME") color magenta
+		[# CurrentSlotToFill!!.content = Container() #]
 		request cargorobot -m reachTarget : reachTarget($HomeX, $HomeY)
 	}
 	Transition t0
 		whenReply targetReached     -> switch_to_disengaged
-		whenReply targetUnreachable -> movement_failed
+		whenReply targetUnreachable -> switch_to_disengaged
 
-	// Fallback error-handling state if navigation fails
-	State movement_failed {
-		println("[CARGO SERVICE] CRITICAL: Robot failed to reach target. Safety stop triggered.") color red
+	// provisional failure policy (committente question 1): the transfer is aborted
+	State abort_transfer {
+		println("[CARGO SERVICE] transfer aborted: the robot failed to reach a target (Q1 policy)") color red
 	}
 	Goto switch_to_disengaged
-    
+
     // ----------------------------------------------------
     // ----------------------------------------------------
     // ----------------------------------------------------
-    
-    State set_outofservice {
-    	[# CurrentHoldState = HoldState.OUT_OF_SERVICE #]
-    }
-    Goto waiting
-    
+
     State switch_to_disengaged {
+    	// discard the reservation (kept in the service memory) and go back disengaged;
+    	// reached from completion, timeout and abort: the actions are the same
+    	[# CurrentSlotToFill = null #]
     	[# CurrentHoldState = HoldState.DISENGAGED #]
     }
     Goto waiting
@@ -235,7 +290,7 @@ QActor cargoservice context ctxcargoservice {
 
 // pure protocol adapter (P4): reachTarget(X,Y) -> moverobot(X,Y,STEPTIME).
 // No map and no station table here: coordinates arrive already resolved.
-QActor cargorobot context ctxcargoservice {
+QActor cargorobot context ctxrobot {
 	[# val StepTime = 350 #]
 
 	State s0 initial {
@@ -276,7 +331,9 @@ QActor cargorobot context ctxcargoservice {
 // ----------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------
 
-
+// simulated detector: one measurement per state activation; the iteration is a
+// state loop (an actor must never busy-wait). The failure branch (sustained
+// D > DFREE, out of service) is deferred to Sprint 2 with its logic.
 QActor sonar context ctxdevices {
 	[#
 		val DFREE  = 3
@@ -288,28 +345,23 @@ QActor sonar context ctxdevices {
 	Transition t0
 		whenMsg checkMeasurement -> measureDistance
 
-	
+
 	State measureDistance {
 		println("[SONAR] measuring distance...") color yellow
 		[# CurrD = java.util.Random().nextInt(0, 6) #]
-		if [# CurrD > DFREE #] {
-			delay 3000 // if after 3 seconds it is still > currD
-			[# CurrD = java.util.Random().nextInt(0, 6) #]
-			if [# CurrD > DFREE #] {
-				println("[SONAR] send message to cargoservice that the hold is out of service")
-				emit outOfService : outOfService(none)
-			}
-			else {
-				emit containerPositioned : containerPositioned(none)
-			}
+		if [# CurrD < DFREE / 2 #] {
+			println("[SONAR] container detected (D < DFREE/2)") color yellow
+			emit containerPositioned : containerPositioned(none)
+			autodispatch sonar_measure_done : sonar_measure_done(none)
 		}
 		else {
-			if [# CurrD < DFREE / 2 #] {
-				emit containerPositioned : containerPositioned(none)
-			}
+			delay 1000
+			autodispatch sonar_measure_again : sonar_measure_again(none)
 		}
 	}
-	Goto waiting
+	Transition t0
+		whenMsg sonar_measure_done  -> waiting
+		whenMsg sonar_measure_again -> measureDistance
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -319,11 +371,11 @@ QActor sonar context ctxdevices {
 
 QActor ioport context ctxioport {
 	import "it.unibo.Hold.*"
-	
+
 	[#
 		val display: IDisplay = Display()
 	#]
-	
+
 	State s0 initial {
 		println("[IOPORT] SIMULATING PUSHBUTTON LOGIC")
 		[# display.setBookedSlot(-1) #]
@@ -333,9 +385,9 @@ QActor ioport context ctxioport {
 
 
 	State simulate_pushbutton {
-		[# 
+		[#
 			println("Press Enter to send load request: ")
-			readln()	
+			readln()
 		#]
 		[# display.setBookedSlot(-1) #]
 		[# display.setState("...") #]
@@ -349,12 +401,12 @@ QActor ioport context ctxioport {
 
 	State accepted {
 		println("[IOPORT] DISPLAY: load_accepted received") color green
-		
+
 		onMsg( load_accepted : load_accepted(SlotId)) {
-			[# 
+			[#
 				val SlotId = payloadArg(0).toInt()
-				display.setBookedSlot(SlotId) 
-				display.setState("load accepted, system enganged") 
+				display.setBookedSlot(SlotId)
+				display.setState("load accepted, system enganged")
 			#]
 		}
 	}
@@ -363,14 +415,14 @@ QActor ioport context ctxioport {
 
 	State retrylater {
 		println("[IOPORT] DISPLAY: load_retrylater received") color yellow
-		
+
 		onMsg( load_retrylater : load_retrylater(HOLDSTATE)) {
 			[#
 				val holdStateReceived = payloadArg(0)
-				if (holdStateReceived == "ENGAGED") {
-					display.setState("retry later, another request is being served...") 
+				if (holdStateReceived == "engaged") {
+					display.setState("retry later, another request is being served...")
 				} else {
-					display.setState("retry later, the hold is currently out of service...") 
+					display.setState("retry later, the hold is currently out of service...")
 				}
 			#]
 		}
@@ -379,7 +431,7 @@ QActor ioport context ctxioport {
 
 	State refused {
 		println("[IOPORT] DISPLAY: load_refused received, all slots are occupied") color red
-		
+
 		[# display.setState("refused, the hold' slots are all occupied.") #]
 	}
 	Goto simulate_pushbutton

@@ -55,6 +55,9 @@ dependencies {
     // Use the Kotlin JUnit integration.
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:1.9.22"
 
+    // JUnit 4, used by the Sprint 1 automated TestPlans (test/it/unibo/test)
+    testImplementation 'junit:junit:4.13.2'
+
     /* COROUTINES ******************************************************************************* */
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
     implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: "$kotlinVersion"   //, ext: 'pom'
@@ -122,8 +125,31 @@ sourceSets {
             srcDir 'src'   // Importante per i file generati Qak
             exclude 'main/**'
         }
+        kotlin {
+            srcDir 'utils'
+            srcDir 'src'   // Importante per i file generati Qak
+            exclude 'main/**'
+        }
     }
-}  
+    // The Sprint 1 test sources (TestPlanSprint1 + the mock actors of the test
+    // configuration) live in the top-level 'test' folder, not in the Gradle
+    // default 'src/test/kotlin': without this, 'gradlew test' compiles nothing
+    // and passes vacuously.
+    test {
+        java   { srcDirs = ['test'] }
+        kotlin { srcDirs = ['test'] }
+    }
+}
+
+// TestPlanSprint1 uses JUnit 4; the test JVM starts the qak test configuration
+// (cargoservicetest.pl) by itself, so no external process has to be running.
+test {
+    useJUnit()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
 
 /*
 eclipse {

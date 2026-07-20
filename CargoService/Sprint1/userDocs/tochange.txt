@@ -1,2 +1,85 @@
 - cargorobot in the same context of cargoservice
 - see if handle load request branches are mutually exclusive
+
+==========================================================================
+CHANGES 2026-07-20 — code aligned to sprint1_v0.html (doc = reference)
+==========================================================================
+
+A) Doc/code alignment (cargoservice_sprint1.qak + regenerated-by-hand .kt + cargoservice.pl)
+1. Contexts/ports aligned to the Design section: ctxcargoservice 8030,
+   ctxioport 8031, ctxrobot 8032 (NEW context), ctxdevices 8033.
+   cargorobot moved from ctxcargoservice to ctxrobot (closes note 1 above).
+2. handle_load_request: the three answer branches are now MUTUALLY EXCLUSIVE
+   (if / else-if / else). Before, a request received while engaged produced
+   TWO replies (retrylater + accepted/refused) and corrupted the reservation
+   of the ongoing trip (closes note 2 above; P1, defect inherited from S0).
+3. Trip states renamed as in the Behaviour table: move_to_ioport,
+   move_to_slot5, marking_pause, move_to_reserved_slot, container_stored,
+   abort_transfer. container_stored now occupies THE RESERVED slot
+   (CurrentSlotToFill.content = Container(), not "first free") and then sends
+   the robot HOME; both HOME replies end in switch_to_disengaged (Q2).
+   switch_to_disengaged now also DISCARDS the reservation
+   (CurrentSlotToFill = null), as the doc states.
+4. Out-of-service logic removed from the flows (doc: deferred to Sprint 2):
+   sonar no longer emits outOfService; the set_outofservice state and the
+   whenEvent outOfService transition are gone. The outOfService Event stays
+   declared as the skeleton the doc mentions.
+5. Sonar aligned to the doc behaviour: one measurement per activation,
+   detection if D < DFREE/2, otherwise retry after 1 s via a state loop
+   (sonar_measure_again/done dispatches); no busy wait, no 3 s failure branch.
+6. Lowercase payload atoms: load_retrylater(engaged) instead of (ENGAGED)
+   (uppercase = prolog variable in the message term); Ioport display check
+   updated to "engaged".
+7. Hold model backtracking (doc, Design): IHold.java and Hold.java DELETED.
+   The business registry (slot list + state + station coordinates) lives in
+   the cargoservice actor; ISlot/Slot/ICell/Cell/IContainer/Container/
+   HoldState/IDisplay/Display remain.
+
+B) New: JUnit TestPlans (TP1.1..TP1.5) + what was needed to run them
+8. New test-support messages (P5): get_hold -> hold_state(DESC) and
+   preset_hold(full|empty) -> preset_done(done); served by serve_get_hold /
+   serve_preset_hold, reachable only from waiting (quiescent points).
+9. Engagement window now serves concurrent load_requests with
+   retrylater(engaged) via twin states engaged_retrylater/engaged_window
+   (realizes committente Q3; needed by TP1.3). Trade-off accepted: serving a
+   concurrent request re-opens the 30 s window. Residual deviation: requests
+   arriving during the TRIP are deferred by the actor message store and
+   served (accepted) at the end of the cycle — recorded as a question.
+10. New files: cargoservicetest.pl (test deployment: real cargoservice +
+    MockCargorobot + MockSonar co-located in ctxcargoservice, port 8030),
+    test/it/unibo/mock/MockCargorobot.kt, test/it/unibo/mock/MockSonar.kt,
+    test/it/unibo/test/TestPlanSprint1.kt (JUnit 4, self-contained: the test
+    JVM starts the configuration itself; run with: gradlew test).
+11. build.gradle: test sourceSet mapped to the top-level test/ folder, JUnit 4
+    dependency, useJUnit() + testLogging; main kotlin sourceSet declared
+    explicitly next to java.
+
+B2) Bug found and fixed while running the TestPlans
+15. qak TimerActor bug with underscored state names: it derives its owner
+    actor from the timeout-event name via substringBeforeLast("_"), so
+    "local_tout_cargoservice_accept_load_request" resolved to the
+    non-existent actor "cargoservice_accept_load" -> the timer thread looped
+    forever ("TimerActor TOO FAST ERROR") and the 30 s window NEVER expired
+    (also latent in the Sprint0 code). Fix: timeout-event suffix must be a
+    single token -> "local_tout_"+name+"_w30accept" / "_w30window".
+    TP1.4 now measures the window at ~30.0 s.
+
+D) Test run results (2026-07-20, unit variant, gradlew test)
+    test1_loadAcceptedOnEmptyHold  PASSED  (load_accepted(1))
+    test2_loadRefusedOnFullHold    PASSED  (load_refused, 4x occupied kept)
+    test3_retryLaterWhenEngaged    PASSED  (load_retrylater(engaged))
+    test4_engagementTimeout        PASSED  (~30.0 s, reservation discarded)
+    test5_completeLoadCycle        PASSED  (disengaged_occupied_free_free_free)
+
+C) Document (sprint1_v0.html)
+12. Behaviour table: added the engaged_retrylater/engaged_window row;
+    accept_load_request row lists the load_request transition.
+13. Test plans section: new "JUnit implementation" subsection with the test
+    architecture, the changes needed to execute the plans, and the code of
+    TestPlanSprint1 + MockCargorobot + cargoservicetest.pl.
+14. Deployment step 5: tests are self-contained (nothing must be running).
+16. Test plans section: added "How to run the TestPlans" — 8 step-by-step
+    instructions for the committente (prerequisites, working directory, free
+    port 8030, gradlew test command, do-not-interrupt warning for the 30 s of
+    TP1.4, where to read the report, cleanTest for re-runs, pointer to the
+    integration variant in Deployment).
