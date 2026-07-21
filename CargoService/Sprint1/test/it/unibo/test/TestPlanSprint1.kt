@@ -114,10 +114,15 @@ class TestPlanSprint1 {
         return m!!.groupValues[1]       // e.g. disengaged_free_occupied_free_free
     }
 
-    /** Publishes the same distance event the proactive sonar would:
-        D = 1 < DFREE/2, i.e. the detection of a container at the IOPort. */
+    /** Publishes the same distance events the proactive sonar would: the
+        detection requires D < DFREE/2 SUSTAINED for three consecutive
+        measurements (~3 s at the 1 Hz rate), so three below-threshold events
+        are published, spaced enough for the evaluation round-trip. */
     private fun injectContainerDetected() {
-        conn!!.forward("msg(sonar_distance,event,sonar,none,sonar_distance(1),1)")
+        repeat(3) {
+            conn!!.forward("msg(sonar_distance,event,sonar,none,sonar_distance(1),1)")
+            Thread.sleep(300)
+        }
     }
 
     private fun slotIdOf(reply: String): Int? =

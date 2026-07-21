@@ -25,11 +25,11 @@ version '1.0'
  
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 }
 kotlin {
   jvmToolchain {
-    languageVersion.set(JavaLanguageVersion.of("21"))
+    languageVersion.set(JavaLanguageVersion.of("17"))
   }
 }
 

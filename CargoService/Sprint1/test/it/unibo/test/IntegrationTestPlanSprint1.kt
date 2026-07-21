@@ -112,7 +112,11 @@ class IntegrationTestPlanSprint1 {
     }
 
     private fun injectContainerDetected() {
-        conn!!.forward("msg(sonar_distance,event,sonar,none,sonar_distance(1),1)")
+        // detection = three consecutive below-threshold measurements (~3 s)
+        repeat(3) {
+            conn!!.forward("msg(sonar_distance,event,sonar,none,sonar_distance(1),1)")
+            Thread.sleep(300)
+        }
     }
 
     // -------------------------------------------------------------- TestPlan
@@ -128,9 +132,9 @@ class IntegrationTestPlanSprint1 {
      *
      * Generous timeout: the real robot moves cell by cell (StepTime 350 ms).
      * NOTE on a failed run: if a leg ends with targetUnreachable (coordinate
-     * misalignment with the map!), the service enters the TERMINAL out_of_service
-     * state (Q1+Q4) and this test reports hold_state(out_of_service_...):
-     * that is exactly the misalignment this plan exists to catch.
+     * misalignment with the map!), the hold is marked OUT_OF_SERVICE and this
+     * test reports hold_state(out_of_service_...): that is exactly the
+     * misalignment this plan exists to catch.
      */
     @Test(timeout = 300000)
     fun test_completeLoadCycleWithRobotsmart() {
