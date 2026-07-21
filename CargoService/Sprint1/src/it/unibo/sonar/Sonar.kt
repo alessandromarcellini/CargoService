@@ -71,7 +71,7 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t026",targetState="do_publish",cond=whenDispatch("sonar_next_measure"))
+					 transition(edgeName="t023",targetState="do_publish",cond=whenDispatch("sonar_next_measure"))
 				}	 
 			}
 		}

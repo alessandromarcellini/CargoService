@@ -29,7 +29,7 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 	override fun getBody() : (ActorBasicFsm.() -> Unit){
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
-		 val StepTime = 350  
+		 val StepTime = 10  
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
@@ -48,7 +48,7 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t023",targetState="reaching",cond=whenRequest("reachTarget"))
+					 transition(edgeName="t020",targetState="reaching",cond=whenRequest("reachTarget"))
 				}	 
 				state("reaching") { //this:State
 					action { //it:State
@@ -64,8 +64,8 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t024",targetState="target_ok",cond=whenReply("moverobotdone"))
-					transition(edgeName="t025",targetState="target_fail",cond=whenReply("moverobotfailed"))
+					 transition(edgeName="t021",targetState="target_ok",cond=whenReply("moverobotdone"))
+					transition(edgeName="t022",targetState="target_fail",cond=whenReply("moverobotfailed"))
 				}	 
 				state("target_ok") { //this:State
 					action { //it:State

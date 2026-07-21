@@ -192,3 +192,7 @@ task run0(type: JavaExec) {
     main = 'TODO'
 }
 
+tasks.withType(JavaExec).configureEach {
+    standardInput = System.in
+}
+

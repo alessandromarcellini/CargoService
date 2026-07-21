@@ -47,7 +47,7 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		        val DETECT_PERSISTENCE = 3
 		        var DetectCount = 0
 		
-				var IOPortX = 6
+				var IOPortX = 2
 				var IOPortY = 1
 				var HomeX = 0
 				var HomeY = 0
@@ -166,18 +166,18 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				state("accept_load_request") { //this:State
 					action { //it:State
 						forward("inhibit_ioport", "inhibit_ioport(none)" ,"ioport" ) 
-						 WindowStart = System.currentTimeMillis()  
 						 DetectCount = 0  
+						
+						            kotlinx.coroutines.GlobalScope.launch {
+						                kotlinx.coroutines.delay(30000L)
+						                forward("cargoservice_window_expired", "cargoservice_window_expired(none)", "cargoservice")
+						            }
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
-				 	 		stateTimer = TimerActor("timer_accept_load_request", 
-				 	 					  scope, context!!, "local_tout_"+name+"_accept_load_request", 30000.toLong() )  //OCT2023
 					}	 	 
-					 transition(edgeName="t05",targetState="eval_window_expiry",cond=whenTimeout("local_tout_"+name+"_accept_load_request"))   
-					transition(edgeName="t06",targetState="eval_distance",cond=whenEvent("sonar_distance"))
-					transition(edgeName="t07",targetState="engaged_retrylater",cond=whenRequest("load_request"))
+					 transition( edgeName="goto",targetState="engaged_window", cond=doswitch() )
 				}	 
 				state("engaged_window") { //this:State
 					action { //it:State
@@ -185,12 +185,10 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
-				 	 		stateTimer = TimerActor("timer_engaged_window", 
-				 	 					  scope, context!!, "local_tout_"+name+"_engaged_window", 30000.toLong() )  //OCT2023
 					}	 	 
-					 transition(edgeName="t08",targetState="eval_window_expiry",cond=whenTimeout("local_tout_"+name+"_engaged_window"))   
-					transition(edgeName="t09",targetState="eval_distance",cond=whenEvent("sonar_distance"))
-					transition(edgeName="t010",targetState="engaged_retrylater",cond=whenRequest("load_request"))
+					 transition(edgeName="t05",targetState="switch_to_disengaged",cond=whenDispatch("cargoservice_window_expired"))
+					transition(edgeName="t06",targetState="eval_distance",cond=whenEvent("sonar_distance"))
+					transition(edgeName="t07",targetState="engaged_retrylater",cond=whenRequest("load_request"))
 				}	 
 				state("eval_distance") { //this:State
 					action { //it:State
@@ -217,8 +215,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t011",targetState="move_to_ioport",cond=whenDispatch("cargoservice_start_trip"))
-					transition(edgeName="t012",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
+					 transition(edgeName="t08",targetState="move_to_ioport",cond=whenDispatch("cargoservice_start_trip"))
+					transition(edgeName="t09",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
 				}	 
 				state("eval_window_expiry") { //this:State
 					action { //it:State
@@ -234,8 +232,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t013",targetState="switch_to_disengaged",cond=whenDispatch("cargoservice_window_expired"))
-					transition(edgeName="t014",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
+					 transition(edgeName="t010",targetState="switch_to_disengaged",cond=whenDispatch("cargoservice_window_expired"))
+					transition(edgeName="t011",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
 				}	 
 				state("engaged_retrylater") { //this:State
 					action { //it:State
@@ -258,8 +256,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t015",targetState="move_to_slot5",cond=whenReply("targetReached"))
-					transition(edgeName="t016",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t012",targetState="move_to_slot5",cond=whenReply("targetReached"))
+					transition(edgeName="t013",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("move_to_slot5") { //this:State
 					action { //it:State
@@ -270,8 +268,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t017",targetState="marking_pause",cond=whenReply("targetReached"))
-					transition(edgeName="t018",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t014",targetState="marking_pause",cond=whenReply("targetReached"))
+					transition(edgeName="t015",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("marking_pause") { //this:State
 					action { //it:State
@@ -296,8 +294,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t019",targetState="container_stored",cond=whenReply("targetReached"))
-					transition(edgeName="t020",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t016",targetState="container_stored",cond=whenReply("targetReached"))
+					transition(edgeName="t017",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("container_stored") { //this:State
 					action { //it:State
@@ -309,8 +307,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t021",targetState="switch_to_disengaged",cond=whenReply("targetReached"))
-					transition(edgeName="t022",targetState="switch_to_disengaged",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t018",targetState="switch_to_disengaged",cond=whenReply("targetReached"))
+					transition(edgeName="t019",targetState="switch_to_disengaged",cond=whenReply("targetUnreachable"))
 				}	 
 				state("abort_transfer") { //this:State
 					action { //it:State

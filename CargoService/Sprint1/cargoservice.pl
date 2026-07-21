@@ -29,15 +29,13 @@ reply( moverobotdone, moverobotdone(ARG) ).  %%for moverobot
 reply( moverobotfailed, moverobotfailed(PLANDONE,PLANTODO) ).  %%for moverobot
 %====================================================================================
 context(ctxcargoservice, "localhost",  "TCP", "8030").
-context(ctxioport, "localhost",  "TCP", "8031").
-context(ctxdevices, "localhost",  "TCP", "8033").
 context(ctxrobotsmart, "127.0.0.1",  "TCP", "8020").
  qactor( robotsmart, ctxrobotsmart, "external").
   qactor( cargoservice, ctxcargoservice, "it.unibo.cargoservice.Cargoservice").
  static(cargoservice).
   qactor( cargorobot, ctxcargoservice, "it.unibo.cargorobot.Cargorobot").
  static(cargorobot).
-  qactor( sonar, ctxdevices, "it.unibo.sonar.Sonar").
+  qactor( sonar, ctxcargoservice, "it.unibo.sonar.Sonar").
  static(sonar).
-  qactor( ioport, ctxioport, "it.unibo.ioport.Ioport").
+  qactor( ioport, ctxcargoservice, "it.unibo.ioport.Ioport").
  static(ioport).

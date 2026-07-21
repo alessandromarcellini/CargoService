@@ -28,10 +28,8 @@ with Diagram('cargoserviceArch', show=False, outformat='png', graph_attr=graphat
      with Cluster('ctxcargoservice', graph_attr=nodeattr):
           cargoservice=Custom('cargoservice','./qakicons/symActorWithobjSmall.png')
           cargorobot=Custom('cargorobot','./qakicons/symActorWithobjSmall.png')
-     with Cluster('ctxioport', graph_attr=nodeattr):
-          ioport=Custom('ioport','./qakicons/symActorWithobjSmall.png')
-     with Cluster('ctxdevices', graph_attr=nodeattr):
           sonar=Custom('sonar','./qakicons/symActorWithobjSmall.png')
+          ioport=Custom('ioport','./qakicons/symActorWithobjSmall.png')
      with Cluster('ctxrobotsmart', graph_attr=nodeattr):
           robotsmart=Custom('robotsmart(ext)','./qakicons/externalQActor.png')
      sys >> Edge( label='sonar_distance', **evattr, decorate='true', fontcolor='darkgreen') >> cargoservice

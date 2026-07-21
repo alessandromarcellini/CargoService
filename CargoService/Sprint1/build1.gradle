@@ -55,6 +55,9 @@ dependencies {
     // Use the Kotlin JUnit integration.
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:1.9.22"
 
+    // JUnit 4, used by the Sprint 1 automated TestPlans (test/it/unibo/test)
+    testImplementation 'junit:junit:4.13.2'
+
     /* COROUTINES ******************************************************************************* */
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
     implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: "$kotlinVersion"   //, ext: 'pom'
@@ -122,8 +125,51 @@ sourceSets {
             srcDir 'src'   // Importante per i file generati Qak
             exclude 'main/**'
         }
+        kotlin {
+            srcDir 'utils'
+            srcDir 'src'   // Importante per i file generati Qak
+            exclude 'main/**'
+        }
     }
-}  
+    // The Sprint 1 test sources (TestPlanSprint1 + the mock actors of the test
+    // configuration) live in the top-level 'test' folder, not in the Gradle
+    // default 'src/test/kotlin': without this, 'gradlew test' compiles nothing
+    // and passes vacuously.
+    test {
+        java   { srcDirs = ['test'] }
+        kotlin { srcDirs = ['test'] }
+    }
+}
+
+// TestPlanSprint1 uses JUnit 4; the test JVM starts the qak test configuration
+// (cargoservicetest.pl) by itself, so no external process has to be running.
+// The integration plan (TP1.6) is EXCLUDED here: it needs the robot
+// environment up and is launched on demand with 'gradlew integrationTest'.
+test {
+    useJUnit()
+    exclude '**/IntegrationTestPlan*'
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
+
+// TP1.6 — integration with robotsmart26 (real cargorobot adapter, real map).
+// PREREQUISITES: docker compose -f unibobasic26.yaml up (in robotsmart26/yamls)
+// and gradlew run (in robotsmart26). Always re-runs (never UP-TO-DATE).
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = 'TP1.6: complete load cycle against robotsmart26 (requires the robot environment running)'
+    useJUnit()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    include '**/IntegrationTestPlan*'
+    outputs.upToDateWhen { false }
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
 
 /*
 eclipse {
@@ -139,7 +185,7 @@ tasks.withType(Copy).configureEach {
 
 application {
     //Define the main class for the application.
-    mainClassName    = 'it.unibo.ctxcargoservice.MainCtxcargoserviceKt'
+    mainClassName    = 'it.unibo.ctxdevices.MainCtxdevicesKt'
 }
  
  jar {
@@ -174,11 +220,32 @@ task run0(type: JavaExec) {
     group = "Execution"
     description = "Run the main class with JavaExecTask"
     classpath = sourceSets.main.runtimeClasspath
-    main = 'it.unibo.ctxcargoservice.MainCtxcargoserviceKt'
+    main = 'it.unibo.ctxdevices.MainCtxdevicesKt'
 }
 
-tasks.withType(JavaExec).configureEach {
-    standardInput = System.in
+/* ---------------------------------------------------------------------------
+   Convenience run tasks (Deployment, sprint1_v1.html): one per context, so the
+   end user never edits this file. Start order: runCtxCargoservice, then
+   runCtxDevices, and last runCtxIoport (the manual demo driver).
+   --------------------------------------------------------------------------- */
+tasks.register('runCtxCargoservice', JavaExec) {
+    group = 'Execution'
+    description = 'Run ctxcargoservice (cargoservice + cargorobot co-located, TCP 8030)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'it.unibo.ctxcargoservice.MainCtxcargoserviceKt'
+}
+tasks.register('runCtxDevices', JavaExec) {
+    group = 'Execution'
+    description = 'Run ctxdevices (proactive sonar reading sonarDistances.txt, TCP 8033)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'it.unibo.ctxdevices.MainCtxdevicesKt'
+}
+tasks.register('runCtxIoport', JavaExec) {
+    group = 'Execution'
+    description = 'Run ctxioport (console pushbutton demo driver, TCP 8031)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'it.unibo.ctxioport.MainCtxioportKt'
+    standardInput = System.in   // the console asks to press Enter (pushbutton)
 }
 
 /*

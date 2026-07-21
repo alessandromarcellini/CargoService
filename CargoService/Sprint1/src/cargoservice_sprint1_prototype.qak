@@ -64,8 +64,7 @@ Reply moverobotfailed: moverobotfailed(PLANDONE, PLANTODO) for moverobot
 // ----------------------------------------------------------------------------------------------
 
 Context ctxcargoservice ip [host="localhost" port=8030]
-Context ctxioport       ip [host="localhost" port=8031]
-Context ctxdevices      ip [host="localhost" port=8033]
+
 
 Context ctxrobotsmart 	ip [host="127.0.0.1" port=8020]   // reused asset, port fixed by the committente
 
@@ -95,7 +94,7 @@ QActor cargoservice context ctxcargoservice {
         val DETECT_PERSISTENCE = 3
         var DetectCount = 0
 
-		var IOPortX = 6
+		var IOPortX = 2
 		var IOPortY = 1
 		var HomeX = 0
 		var HomeY = 0
@@ -197,21 +196,26 @@ QActor cargoservice context ctxcargoservice {
     // then listen to the proactive sonar distance events
     State accept_load_request {
     	forward ioport -m inhibit_ioport : inhibit_ioport(none)
-    	[# WindowStart = System.currentTimeMillis() #]
     	[# DetectCount = 0 #]
     	// one-shot window timer: NOT the state-timer idiom (which would restart
     	// at every evaluation round-trip); see the Design realization notes
+    	
+    	[#
+            kotlinx.coroutines.GlobalScope.launch {
+                kotlinx.coroutines.delay(30000L)
+                forward("cargoservice_window_expired", "cargoservice_window_expired(none)", "cargoservice")
+            }
+    	#]
+    	
     }
+	Goto engaged_window
+	
+	State engaged_window { }
     Transition t0
-    	whenTime 30000 -> eval_window_expiry
+    	whenMsg cargoservice_window_expired -> switch_to_disengaged
     	whenEvent sonar_distance -> eval_distance
     	whenRequest load_request -> engaged_retrylater
 
-    State engaged_window { }
-    Transition t0
-    	whenTime 30000 -> eval_window_expiry
-    	whenEvent sonar_distance -> eval_distance
-    	whenRequest load_request -> engaged_retrylater
 
     // payload-guarded transition realized as an evaluation state.
     // Detection = D < DFREE/2 sustained for DETECT_PERSISTENCE CONSECUTIVE
@@ -344,7 +348,7 @@ QActor cargoservice context ctxcargoservice {
 // Co-located with cargoservice (committente resource saving).
 // ----------------------------------------------------------------------------------------------
 QActor cargorobot context ctxcargoservice {
-	[# val StepTime = 350 #]
+	[# val StepTime = 10 #]
 
 	State s0 initial {
 		println("[CARGOROBOT] ready (adapter towards the external robotsmart)") color yellow
@@ -386,7 +390,7 @@ QActor cargorobot context ctxcargoservice {
 // sonarDistances.txt — deterministic, reproducible prototype runs. The physical
 // pico sonar will publish really-measured distances on the same contract.
 // ----------------------------------------------------------------------------------------------
-QActor sonar context ctxdevices {
+QActor sonar context ctxcargoservice {
 	
 	[#
 		fun LoadDistances(): List<Int> {
@@ -437,7 +441,7 @@ QActor sonar context ctxdevices {
 // ----------------------------------------------------------------------------------------------
 
 
-QActor ioport context ctxioport {
+QActor ioport context ctxcargoservice {
 	import "it.unibo.Hold.*"
 
 	[#
