@@ -59,9 +59,9 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t024",targetState="accepted",cond=whenReply("load_accepted"))
-					transition(edgeName="t025",targetState="retrylater",cond=whenReply("load_retrylater"))
-					transition(edgeName="t026",targetState="refused",cond=whenReply("load_refused"))
+					 transition(edgeName="t022",targetState="accepted",cond=whenReply("load_accepted"))
+					transition(edgeName="t023",targetState="retrylater",cond=whenReply("load_retrylater"))
+					transition(edgeName="t024",targetState="refused",cond=whenReply("load_refused"))
 				}	 
 				state("accepted") { //this:State
 					action { //it:State
@@ -89,8 +89,8 @@ class Ioport ( name: String, scope: CoroutineScope, isconfined: Boolean=false, i
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t027",targetState="simulate_pushbutton",cond=whenDispatch("enable_ioport"))
-					transition(edgeName="t028",targetState="inhibited_drain",cond=whenDispatch("inhibit_ioport"))
+					 transition(edgeName="t025",targetState="simulate_pushbutton",cond=whenDispatch("enable_ioport"))
+					transition(edgeName="t026",targetState="inhibited_drain",cond=whenDispatch("inhibit_ioport"))
 				}	 
 				state("inhibited_drain") { //this:State
 					action { //it:State

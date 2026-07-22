@@ -34,11 +34,6 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		        var CurrentHoldState: HoldState = HoldState.DISENGAGED
 		        var CurrentSlotToFill: ISlot? = null
 		
-		        // start instant of the current engagement window (one-shot 30 s timer:
-		        // armed once at the acceptance; stale firings of previous engagements
-		        // are filtered in eval_window_expiry against this timestamp)
-		        var WindowStart: Long = 0L
-		
 		        val DFREE = 3   // detection when D < DFREE/2 (interpretation owned by the service)
 		
 		        // persistence of the detection (requirement: D < DFREE/2 "for a reasonable
@@ -218,26 +213,9 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					 transition(edgeName="t08",targetState="move_to_ioport",cond=whenDispatch("cargoservice_start_trip"))
 					transition(edgeName="t09",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
 				}	 
-				state("eval_window_expiry") { //this:State
-					action { //it:State
-						if(  System.currentTimeMillis() - WindowStart >= 29500  
-						 ){CommUtils.outcyan("[CARGO SERVICE] engagement window expired: discarding the reservation")
-						forward("cargoservice_window_expired", "cargoservice_window_expired(none)" ,name ) 
-						}
-						else
-						 {forward("cargoservice_stay_engaged", "cargoservice_stay_engaged(none)" ,name ) 
-						 }
-						//genTimer( actor, state )
-					}
-					//After Lenzi Aug2002
-					sysaction { //it:State
-					}	 	 
-					 transition(edgeName="t010",targetState="switch_to_disengaged",cond=whenDispatch("cargoservice_window_expired"))
-					transition(edgeName="t011",targetState="engaged_window",cond=whenDispatch("cargoservice_stay_engaged"))
-				}	 
 				state("engaged_retrylater") { //this:State
 					action { //it:State
-						CommUtils.outcyan("[CARGO SERVICE] engaged: replying RETRY LATER to a concurrent request")
+						CommUtils.outcyan("[CARGO SERVICE] engaged: replying RETRY LATER to a non-ioport request (test/extension)")
 						 val CurrentHoldStateLc = CurrentHoldState.toString().lowercase()  
 						answer("load_request", "load_retrylater", "load_retrylater($CurrentHoldStateLc)"   )  
 						//genTimer( actor, state )
@@ -256,8 +234,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t012",targetState="move_to_slot5",cond=whenReply("targetReached"))
-					transition(edgeName="t013",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t010",targetState="move_to_slot5",cond=whenReply("targetReached"))
+					transition(edgeName="t011",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("move_to_slot5") { //this:State
 					action { //it:State
@@ -268,8 +246,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t014",targetState="marking_pause",cond=whenReply("targetReached"))
-					transition(edgeName="t015",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t012",targetState="marking_pause",cond=whenReply("targetReached"))
+					transition(edgeName="t013",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("marking_pause") { //this:State
 					action { //it:State
@@ -294,8 +272,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t016",targetState="container_stored",cond=whenReply("targetReached"))
-					transition(edgeName="t017",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t014",targetState="container_stored",cond=whenReply("targetReached"))
+					transition(edgeName="t015",targetState="abort_transfer",cond=whenReply("targetUnreachable"))
 				}	 
 				state("container_stored") { //this:State
 					action { //it:State
@@ -307,8 +285,8 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t018",targetState="switch_to_disengaged",cond=whenReply("targetReached"))
-					transition(edgeName="t019",targetState="switch_to_disengaged",cond=whenReply("targetUnreachable"))
+					 transition(edgeName="t016",targetState="switch_to_disengaged",cond=whenReply("targetReached"))
+					transition(edgeName="t017",targetState="switch_to_disengaged",cond=whenReply("targetUnreachable"))
 				}	 
 				state("abort_transfer") { //this:State
 					action { //it:State

@@ -81,11 +81,6 @@ QActor cargoservice context ctxcargoservice {
         var CurrentHoldState: HoldState = HoldState.DISENGAGED
         var CurrentSlotToFill: ISlot? = null
 
-        // start instant of the current engagement window (one-shot 30 s timer:
-        // armed once at the acceptance; stale firings of previous engagements
-        // are filtered in eval_window_expiry against this timestamp)
-        var WindowStart: Long = 0L
-
         val DFREE = 3   // detection when D < DFREE/2 (interpretation owned by the service)
 
         // persistence of the detection (requirement: D < DFREE/2 "for a reasonable
@@ -243,24 +238,18 @@ QActor cargoservice context ctxcargoservice {
     	whenMsg cargoservice_start_trip -> move_to_ioport
     	whenMsg cargoservice_stay_engaged -> engaged_window
 
-    // stale timeout events of previous engagements are filtered here
-    State eval_window_expiry {
-    	if [# System.currentTimeMillis() - WindowStart >= 29500 #] {
-    		println("[CARGO SERVICE] engagement window expired: discarding the reservation") color cyan
-    		autodispatch cargoservice_window_expired : cargoservice_window_expired(none)
-    	}
-    	else {
-    		autodispatch cargoservice_stay_engaged : cargoservice_stay_engaged(none)
-    	}
-    }
-    Transition t0
-    	whenMsg cargoservice_window_expired -> switch_to_disengaged
-    	whenMsg cargoservice_stay_engaged -> engaged_window
-
-    // a request that reaches the service during the window (asynchronous-inhibition
-    // race, or a client that bypasses the ioport) is answered retrylater (guard)
+    // no-queueing guard. In production this transition is INERT: the single
+    // web-GUI customer talks only through the ioport, which is inhibited for the
+    // whole engagement and cannot issue a load_request. The guard therefore never
+    // fires in normal operation (and, re-entering engaged_window via Goto, it does
+    // NOT re-arm the one-shot window). It is kept for two reasons: (1) the
+    // automated TestPlans are non-ioport clients that reach the service directly
+    // (TP1.3), so the guard gives them the well-defined retrylater(engaged) answer
+    // instead of a silently deferred request; (2) it is the natural extension hook
+    // for a future web GUI admitting several concurrent customers, where a second
+    // request could genuinely reach the busy service.
     State engaged_retrylater {
-    	println("[CARGO SERVICE] engaged: replying RETRY LATER to a concurrent request") color cyan
+    	println("[CARGO SERVICE] engaged: replying RETRY LATER to a non-ioport request (test/extension)") color cyan
     	[# val CurrentHoldStateLc = CurrentHoldState.toString().lowercase() #]
     	replyTo load_request with load_retrylater : load_retrylater($CurrentHoldStateLc)
     }
