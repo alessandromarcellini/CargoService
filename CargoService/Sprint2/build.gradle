@@ -55,6 +55,9 @@ dependencies {
     // Use the Kotlin JUnit integration.
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:1.9.22"
 
+    // JUnit 4, used by the Sprint 2 automated TestPlans (test/it/unibo/test)
+    testImplementation 'junit:junit:4.13.2'
+
     /* COROUTINES ******************************************************************************* */
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
     implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: "$kotlinVersion"   //, ext: 'pom'
@@ -123,7 +126,22 @@ sourceSets {
             exclude 'main/**'
         }
     }
-}  
+    // Sprint 2 TestPlans live under test/  (JUnit 4, MQTT-driven)
+    test {
+        java   { srcDirs = ['test'] }
+        kotlin { srcDirs = ['test'] }
+    }
+}
+
+// The TestPlans need the Mosquitto broker up (boundary + device topics are MQTT).
+// The test JVM starts the qak test config (cargoservicetest.pl) by itself.
+test {
+    useJUnit()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
 
 /*
 eclipse {
@@ -138,8 +156,8 @@ tasks.withType(Copy).configureEach {
 }
 
 application {
-    //Define the main class for the application.
-    mainClassName    = 'it.unibo.ctxdevices.MainCtxdevicesKt'
+    // Sprint 2: the application node is ctxcargoservice (cargoservice + cargorobot + logic sonar).
+    mainClassName    = 'it.unibo.ctxcargoservice.MainCtxcargoserviceKt'
 }
  
  jar {
@@ -174,8 +192,16 @@ task run0(type: JavaExec) {
     group = "Execution"
     description = "Run the main class with JavaExecTask"
     classpath = sourceSets.main.runtimeClasspath
-    main = 'it.unibo.ctxdevices.MainCtxdevicesKt'
+    main = 'it.unibo.ctxcargoservice.MainCtxcargoserviceKt'
 }
+
+// NOTE (Sprint 2 variants): there is a SINGLE application main
+// (it.unibo.ctxcargoservice.MainCtxcargoserviceKt) and a SINGLE `gradlew run`.
+// The FIELD vs SIMULATED choice is made in the MODEL, not here:
+//   * cargoservice_sprint2.qak       -> field (real Pico W on the topics)
+//   * cargoservice_sprint2_sim.qaktt -> simulated (adds simsonar+simled in ctxcargoservice)
+// Activate one by giving it the .qak extension (the other becomes .qaktt) and
+// regenerate. No separate task/project is needed for the simulated devices.
 
 /*
 //TODO

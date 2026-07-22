@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CargoService - IOPort (Sprint 2)</title>
+<!-- MQTT-over-WebSocket client -->
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #0f1b2d; color: #e6eef8;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 24px;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing:.3px; }
+  .sub { color:#8fa6c4; font-size: 13px; margin-bottom: 20px; }
+  .panel {
+    width: 420px; max-width: 95vw; background:#16263d; border:1px solid #24405f;
+    border-radius: 14px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  }
+  .display {
+    background:#0b1526; border:1px solid #24405f; border-radius:10px;
+    padding: 14px 16px; margin-bottom: 16px; min-height: 58px;
+    font-family: "Consolas", monospace;
+  }
+  .display .line1 { font-size: 15px; font-weight: 600; }
+  .display .line2 { font-size: 13px; color:#9fb6d6; margin-top: 4px; }
+  .working  { color:#57d38c; }
+  .outofsvc { color:#ff6b6b; }
+  .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .slot {
+    border-radius: 10px; padding: 14px 0; text-align:center; font-size: 13px; font-weight:600;
+    border:1px solid #24405f; background:#0b1526;
+  }
+  .slot .id { display:block; font-size: 11px; color:#7f97b8; margin-bottom: 6px; font-weight:500; }
+  .slot.free     { background:#123021; border-color:#1f5c3a; color:#7ee0a7; }
+  .slot.occupied { background:#3a1620; border-color:#7a2c3d; color:#ff9aa9; }
+  .slot.reserved { background:#3a3416; border-color:#7a6c2c; color:#ffe08a; }
+  button {
+    width: 100%; padding: 15px; border:0; border-radius: 10px; cursor: pointer;
+    font-size: 16px; font-weight: 700; color:#0b1526; background:#57b7ff;
+    transition: filter .15s, opacity .15s;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  button:disabled { background:#39506b; color:#8fa6c4; cursor: not-allowed; }
+  .conn { margin-top: 14px; font-size: 12px; color:#8fa6c4; display:flex; align-items:center; gap:8px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#ff6b6b; }
+  .dot.up { background:#57d38c; }
+  .log {
+    width:420px; max-width:95vw; margin-top:16px; height:120px; overflow:auto;
+    background:#0b1526; border:1px solid #24405f; border-radius:10px; padding:10px 12px;
+    font-family:"Consolas", monospace; font-size:11.5px; color:#9fb6d6; white-space:pre-wrap;
+  }
+</style>
+</head>
+<body>
+  <h1>CargoService &mdash; IOPort</h1>
+  <div class="sub">Sprint 2 web GUI &middot; MQTT-over-WebSocket</div>
+
+  <div class="panel">
+    <div class="display" id="display">
+      <div class="line1" id="dispLine1">Connecting to the broker&hellip;</div>
+      <div class="line2" id="dispLine2">&nbsp;</div>
+    </div>
+
+    <div class="slots" id="slots">
+      <div class="slot free" id="slot1"><span class="id">slot1</span><span class="val">free</span></div>
+      <div class="slot free" id="slot2"><span class="id">slot2</span><span class="val">free</span></div>
+      <div class="slot free" id="slot3"><span class="id">slot3</span><span class="val">free</span></div>
+      <div class="slot free" id="slot4"><span class="id">slot4</span><span class="val">free</span></div>
+    </div>
+
+    <button id="pushbutton" disabled>PUSHBUTTON &mdash; request a load</button>
+
+    <div class="conn"><span class="dot" id="dot"></span><span id="connText">disconnected</span></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+<script>
+// ============================================================================
+// Configuration
+// ============================================================================
+// Use 127.0.0.1, NOT "localhost": on Windows localhost resolves to ::1 (IPv6) first,
+// and the Mosquitto websockets listener is IPv4-only -> slow retries / connack timeout.
+var BROKER_WS   = "ws://127.0.0.1:9001";     // Mosquitto MQTT-over-WebSocket listener
+var TOPIC_IN    = "hold_state";              // cargoservice -> GUI  (qak msg(...) envelope)
+var TOPIC_OUT   = "load_requests";           // GUI -> cargoservice  (qak msg(...) envelope)
+
+// ============================================================================
+// State
+// ============================================================================
+var seq = 1;
+var lastState = "disengaged";
+var client = null;
+
+// ============================================================================
+// UI helpers
+// ============================================================================
+function log(msg) {
+  var el = document.getElementById("log");
+  var t = new Date().toLocaleTimeString();
+  el.textContent += "[" + t + "] " + msg + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+
+function setConn(up, text) {
+  document.getElementById("dot").className = "dot" + (up ? " up" : "");
+  document.getElementById("connText").textContent = text;
+}
+
+function setDisplay(line1, line2, cls) {
+  var l1 = document.getElementById("dispLine1");
+  var l2 = document.getElementById("dispLine2");
+  l1.textContent = line1;
+  l1.className = "line1" + (cls ? " " + cls : "");
+  l2.innerHTML = line2 || "&nbsp;";
+}
+
+function renderSlots(slotAtoms) {
+  for (var i = 0; i < 4; i++) {
+    var v = slotAtoms[i] || "free";
+    var el = document.getElementById("slot" + (i + 1));
+    el.className = "slot " + v;
+    el.querySelector(".val").textContent = v;
+  }
+}
+
+// pushbutton enabled only when the port is free (state disengaged)
+function refreshButton() {
+  document.getElementById("pushbutton").disabled = (lastState !== "disengaged");
+}
+
+// ============================================================================
+// qak envelope helpers  ->  msg(ID,TYPE,SENDER,RECEIVER,CONTENT,SEQ)
+// ============================================================================
+function buildLoadRequestEnvelope() {
+  // a dispatch towards cargoservice, in the model's declared grammar
+  return "msg(load_request,dispatch,ioport,cargoservice,load_request(none)," + (seq++) + ")";
+}
+
+// robustly pull the holdstatus(...) content out of whatever envelope wraps it
+function parseHoldStatus(payload) {
+  var m = payload.match(/holdstatus\(([^)]*)\)/);
+  if (!m) return null;
+  var parts = m[1].split(",").map(function (s) { return s.trim(); });
+  // holdstatus(STATE, WORKING, S1, S2, S3, S4, RESERVED)
+  return {
+    state:    parts[0] || "disengaged",
+    working:  parts[1] || "working",
+    slots:    [parts[2], parts[3], parts[4], parts[5]],
+    reserved: parts[6] || "none"
+  };
+}
+
+// ============================================================================
+// Render an incoming hold state
+// ============================================================================
+function onHoldState(h) {
+  lastState = h.state;
+  renderSlots(h.slots);
+  refreshButton();
+
+  var full = h.slots.every(function (s) { return s === "occupied"; });
+
+  if (h.working === "outofservice" || h.state === "outofservice") {
+    setDisplay("OUT OF SERVICE", "The system is out of service (sonar or robot failure).", "outofsvc");
+  } else if (h.state === "engaged") {
+    var reservedTxt = (h.reserved !== "none")
+      ? "Request accepted &mdash; reserved slot" + h.reserved + ". Place the container in the sensor area (30 s)."
+      : "Engaged.";
+    setDisplay("SERVICE WORKING", reservedTxt, "working");
+  } else if (full) {
+    setDisplay("SERVICE WORKING", "Hold full &mdash; no free slot (a load request is refused).", "working");
+  } else {
+    setDisplay("SERVICE WORKING", "Ready &mdash; press the pushbutton to request a load.", "working");
+  }
+}
+
+// ============================================================================
+// MQTT wiring
+// ============================================================================
+function connect() {
+  log("connecting to " + BROKER_WS + " ...");
+  client = mqtt.connect(BROKER_WS, {
+    clientId: "ioport_gui_" + Math.random().toString(16).slice(2, 10),
+    protocolVersion: 4,      // MQTT 3.1.1 (what Mosquitto 1.6 expects)
+    clean: true,
+    keepalive: 30,
+    connectTimeout: 8000,    // fail fast and retry instead of hanging 30 s
+    reconnectPeriod: 2000
+  });
+
+  client.on("connect", function () {
+    setConn(true, "connected to " + BROKER_WS);
+    log("connected. subscribing to " + TOPIC_IN);
+    client.subscribe(TOPIC_IN, function (err) {
+      if (err) log("subscribe error: " + err.message);
+    });
+    // ask nothing: cargoservice pushes hold_state on every change, incl. at startup
+    if (lastState === "disengaged") {
+      setDisplay("SERVICE WORKING", "Ready &mdash; press the pushbutton to request a load.", "working");
+    }
+    refreshButton();
+  });
+
+  client.on("reconnect", function () { setConn(false, "reconnecting ..."); });
+  client.on("close",     function () { setConn(false, "disconnected"); });
+  client.on("error",     function (e) { log("mqtt error: " + (e && e.message)); });
+
+  client.on("message", function (topic, message) {
+    var payload = message.toString();
+    log("<- " + topic + " : " + payload);
+    if (topic === TOPIC_IN) {
+      var h = parseHoldStatus(payload);
+      if (h) onHoldState(h);
+    }
+  });
+}
+
+document.getElementById("pushbutton").addEventListener("click", function () {
+  if (!client || !client.connected) { log("not connected"); return; }
+  var env = buildLoadRequestEnvelope();
+  client.publish(TOPIC_OUT, env);
+  log("-> " + TOPIC_OUT + " : " + env);
+  setDisplay("SENDING REQUEST ...", "&nbsp;", "working");
+});
+
+connect();
+</script>
+</body>
+</html>

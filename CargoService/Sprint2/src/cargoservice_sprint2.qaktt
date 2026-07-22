@@ -1,0 +1,439 @@
+System cargoservice
+// ============================================================================
+// CargoService - Sprint 2 executable model  (Villani Alessandro, Marcellini Alessandro)
+//
+// Deltas over Sprint 1 (see userDocs/sprint2_v0.html):
+//   * logic sonar: a QActor on the cargoservice node. It ingests the RAW distance
+//     stream published by the device on the MQTT topic "sonar_data", runs two
+//     persistence counters (presence D<DFREE/2, failure D>DFREE, each ~3 s at
+//     1 Hz) and emits the DECLARED events container_detected / out_of_service.
+//     It listens ONLY while the engagement window is open (start_detection /
+//     stop_detection from cargoservice).
+//   * cargoservice: reacts to container_detected / out_of_service (only in its
+//     window states); commands the LED by RAW-publishing start_blinking/
+//     stop_blinking on "led_data"; publishes the hold state as a qak msg(...)
+//     envelope on "hold_state" (answer + display feed); receives the load
+//     request as a qak msg(...) envelope on "load_requests" (from the web GUI).
+//   * NO ioport actor (retired: it was the mock of the now-real web GUI).
+//   * NO get_hold pull channel (tests observe the pushed hold_state). preset_hold
+//     kept for test controllability only.
+//   * NO robot halt: a sonar failure cannot occur mid-trip (window closed), so the
+//     only movement-time Out of service is the robot failure (Sprint 1, unchanged).
+//
+// MQTT topics (broker: Mosquitto @ localhost:1883):
+//   sonar_data     RAW   device -> logic sonar      e.g. "22.5"
+//   led_data       RAW   cargoservice -> device     "start_blinking" | "stop_blinking"
+//   load_requests  qak   web GUI -> cargoservice     msg(load_request,...)
+//   hold_state     qak   cargoservice -> web GUI     msg(holdstatus,...)
+// ============================================================================
+
+mqttBroker "localhost" : 1883 eventTopic "cargoservice"
+
+// ---- boundary: web GUI <-> cargoservice (qak msg(...) envelopes on two topics)
+Dispatch load_request : load_request(none)
+Event    holdstatus   : holdstatus(STATE,WORKING,S1,S2,S3,S4,RESERVED)
+
+// ---- logic sonar <-> cargoservice (declared, meaningful events)
+Event    container_detected : container_detected(none)
+Event    out_of_service     : out_of_service(none)
+// cargoservice opens/closes the logic sonar's listening at the window boundaries
+Dispatch start_detection : start_detection(none)
+Dispatch stop_detection  : stop_detection(none)
+
+// ---- internal state routing of cargoservice (payload-guarded transitions)
+Dispatch cargoservice_goto_accept : cargoservice_goto_accept(none)
+Dispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+Dispatch cargoservice_window_expired : cargoservice_window_expired(none)
+
+// ---- internal timed loop of the logic sonar (1 Hz poll of the last reading)
+Dispatch sonar_tick : sonar_tick(none)
+
+// ---- test support (controllability ONLY; observation is the pushed hold_state)
+Request preset_hold : preset_hold(HOLDCONFIG)
+Reply   preset_done : preset_done(ARG) for preset_hold
+
+// ---- goal-level contract cargoservice -> cargorobot (unchanged from Sprint 1)
+Request reachTarget       : reachTarget(TARGETX, TARGETY)
+Reply   targetReached     : targetReached(ARG)     for reachTarget
+Reply   targetUnreachable : targetUnreachable(ARG) for reachTarget
+
+// ---- contract towards the reused robotsmart26 (unchanged from Sprint 1)
+Request moverobot     : moverobot(TARGETX, TARGETY, STEPTIME)
+Reply   moverobotdone : moverobotdone(ARG) for moverobot
+Reply   moverobotfailed : moverobotfailed(PLANDONE, PLANTODO) for moverobot
+
+// ----------------------------------------------------------------------------
+// Contexts. cargoservice + cargorobot + logic sonar are CO-LOCATED on the
+// cargoservice node (the logic sonar lives here per the Sprint 1 promise).
+// ----------------------------------------------------------------------------
+Context ctxcargoservice ip [host="localhost" port=8030]
+Context ctxrobotsmart   ip [host="127.0.0.1" port=8020]   // reused asset, port fixed by committente
+
+ExternalQActor robotsmart context ctxrobotsmart
+
+// ============================================================================
+QActor cargoservice context ctxcargoservice {
+
+	import "it.unibo.Hold.*"
+
+	[#
+		var CurrentHoldState: HoldState = HoldState.DISENGAGED
+		var CurrentSlotToFill: ISlot? = null
+		var windowJob: kotlinx.coroutines.Job? = null
+
+		// DFREE in centimetres (deployment constant; committente question open).
+		// presence: D < DFREE/2 (=15 cm); failure: D > DFREE (=30 cm)
+		val DFREE = 30
+
+		var SlotsList: List<ISlot> = listOf(
+			Slot(1, 1, 2),
+			Slot(2, 1, 5),
+			Slot(3, 3, 2),
+			Slot(4, 3, 5)
+		)
+		var IOPortX = 6
+		var IOPortY = 1
+		var HomeX   = 0
+		var HomeY   = 0
+		var Slot5X  = 2
+		var Slot5Y  = 6
+
+		fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? =
+			slots.firstOrNull { slot -> slot.content == null }
+
+		// lowercase atoms only (qak parses Uppercase as logical variables)
+		fun slotAtom(slot: ISlot): String =
+			if (slot.content != null) "occupied"
+			else if (CurrentSlotToFill != null && CurrentSlotToFill!!.id == slot.id) "reserved"
+			else "free"
+
+		fun reservedAtom(): String =
+			if (CurrentSlotToFill != null) CurrentSlotToFill!!.id.toString() else "none"
+
+		fun stateAtom(): String = when (CurrentHoldState) {
+			HoldState.DISENGAGED     -> "disengaged"
+			HoldState.ENGAGED        -> "engaged"
+			HoldState.OUT_OF_SERVICE -> "outofservice"
+		}
+
+		fun workingAtom(): String =
+			if (CurrentHoldState == HoldState.OUT_OF_SERVICE) "outofservice" else "working"
+
+		fun ApplyPreset(config: String) {
+			for (slot in SlotsList) slot.content = if (config == "full") Container() else null
+			CurrentSlotToFill = null
+			CurrentHoldState = HoldState.DISENGAGED
+		}
+	#]
+
+	State s0 initial {
+		println("[CARGO SERVICE] started - subscribing to the boundary topic load_requests") color blue
+		// boundary IN: the web GUI publishes qak msg(...) envelopes on load_requests
+		subscribe "load_requests"
+	}
+	Goto waiting
+
+	State waiting {
+		println("[CARGO SERVICE] hold ${'$'}CurrentHoldState: waiting for load_requests") color green
+		// push the current state so a freshly-connected GUI paints the display
+		[# val St = stateAtom(); val Wk = workingAtom();
+		   val A1 = slotAtom(SlotsList[0]); val A2 = slotAtom(SlotsList[1]);
+		   val A3 = slotAtom(SlotsList[2]); val A4 = slotAtom(SlotsList[3]);
+		   val R  = reservedAtom() #]
+		publish "hold_state" -m holdstatus : holdstatus($St,$Wk,$A1,$A2,$A3,$A4,$R)
+	}
+	Transition t0
+		whenMsg load_request -> handle_load_request
+		whenRequest preset_hold -> serve_preset_hold
+
+	// -------- test controllability (no observation here: that is the push) -----
+	State serve_preset_hold {
+		onMsg( preset_hold : preset_hold(HOLDCONFIG) ) {
+			[# val Config = payloadArg(0); ApplyPreset(Config) #]
+			replyTo preset_hold with preset_done : preset_done(done)
+		}
+	}
+	Goto waiting
+
+	// -------- the load decision (mutually exclusive; answer = a hold_state push)
+	State handle_load_request {
+		println("[CARGO SERVICE] evaluating load request...") color cyan
+		if [# CurrentHoldState != HoldState.DISENGAGED #] {
+			println("[CARGO SERVICE] busy / out of service -> retrylater (state pushed)") color cyan
+			autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+		}
+		else {
+			[# CurrentSlotToFill = FindFirstFreeSlot(SlotsList) #]
+			if [# CurrentSlotToFill == null #] {
+				println("[CARGO SERVICE] hold full -> refused (state pushed)") color cyan
+				autodispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
+			}
+			else {
+				println("[CARGO SERVICE] ENGAGED: reserve slot, blink LED, open sonar listening") color cyan
+				[# CurrentHoldState = HoldState.ENGAGED #]
+				autodispatch cargoservice_goto_accept : cargoservice_goto_accept(none)
+			}
+		}
+	}
+	Transition t0
+		whenMsg cargoservice_goto_accept  -> accept_load_request
+		whenMsg cargoservice_goto_waiting -> waiting
+
+	// -------- engagement window ------------------------------------------------
+	State accept_load_request {
+		// LED on (RAW command on led_data), open the sonar listening, push the state
+		[# publish("start_blinking", "led_data") #]
+		forward sonar -m start_detection : start_detection(none)
+		// one-shot 30 s window timer. NOT the qak state-timer (whenTime): the qak
+		// TimerActor derives its owner from local_tout_<actor>_<state> via
+		// substringBeforeLast("_"), which breaks on underscored state names
+		// (endless "TimerActor TOO FAST ERROR"). Instead a single coroutine armed
+		// here dispatches cargoservice_window_expired to self after 30 s; it is
+		// cancelled if the window closes early, so a stale timer can never expire a
+		// later engagement.
+		[#
+			windowJob?.cancel()
+			windowJob = kotlinx.coroutines.GlobalScope.launch {
+				kotlinx.coroutines.delay(30000L)
+				forward("cargoservice_window_expired", "cargoservice_window_expired(none)", "cargoservice")
+			}
+		#]
+		[# val St = stateAtom(); val Wk = workingAtom();
+		   val A1 = slotAtom(SlotsList[0]); val A2 = slotAtom(SlotsList[1]);
+		   val A3 = slotAtom(SlotsList[2]); val A4 = slotAtom(SlotsList[3]);
+		   val R  = reservedAtom() #]
+		publish "hold_state" -m holdstatus : holdstatus($St,$Wk,$A1,$A2,$A3,$A4,$R)
+	}
+	Transition t0
+		whenMsg cargoservice_window_expired               -> window_expired
+		whenEvent container_detected -> start_trip
+		whenEvent out_of_service     -> sonar_out_of_service
+		whenMsg load_request         -> engaged_retrylater
+
+	// a request racing the engaged state: never queued, answered with the busy state
+	State engaged_retrylater {
+		println("[CARGO SERVICE] engaged: pushing busy state to a concurrent request") color cyan
+		[# val St = stateAtom(); val Wk = workingAtom();
+		   val A1 = slotAtom(SlotsList[0]); val A2 = slotAtom(SlotsList[1]);
+		   val A3 = slotAtom(SlotsList[2]); val A4 = slotAtom(SlotsList[3]);
+		   val R  = reservedAtom() #]
+		publish "hold_state" -m holdstatus : holdstatus($St,$Wk,$A1,$A2,$A3,$A4,$R)
+	}
+	Goto engaged_window
+
+	State engaged_window {
+		println("[CARGO SERVICE] engaged: window open, listening to the logic sonar") color green
+	}
+	Transition t0
+		whenMsg cargoservice_window_expired               -> window_expired
+		whenEvent container_detected -> start_trip
+		whenEvent out_of_service     -> sonar_out_of_service
+		whenMsg load_request         -> engaged_retrylater
+
+	State window_expired {
+		println("[CARGO SERVICE] 30s window expired: discard reservation, LED off, close listening") color cyan
+		[# publish("stop_blinking", "led_data") #]
+		forward sonar -m stop_detection : stop_detection(none)
+	}
+	Goto switch_to_disengaged
+
+	State sonar_out_of_service {
+		println("[CARGO SERVICE] SONAR FAILURE during the window -> OUT OF SERVICE (terminal)") color red
+		[# windowJob?.cancel() #]
+		[# publish("stop_blinking", "led_data") #]
+		forward sonar -m stop_detection : stop_detection(none)
+		[# CurrentSlotToFill = null; CurrentHoldState = HoldState.OUT_OF_SERVICE #]
+	}
+	Goto waiting
+
+	// -------- the container trip (sonar is silent from here on) -----------------
+	State start_trip {
+		println("[CARGO SERVICE] container detected: LED off, close listening, start the trip") color magenta
+		[# windowJob?.cancel() #]
+		[# publish("stop_blinking", "led_data") #]
+		forward sonar -m stop_detection : stop_detection(none)
+	}
+	Goto move_to_ioport
+
+	State move_to_ioport {
+		println("[CARGO SERVICE] robot -> IOPort") color magenta
+		request cargorobot -m reachTarget : reachTarget($IOPortX, $IOPortY)
+	}
+	Transition t0
+		whenReply targetReached     -> move_to_slot5
+		whenReply targetUnreachable -> abort_transfer
+
+	State move_to_slot5 {
+		println("[CARGO SERVICE] robot -> slot5 (marking)") color magenta
+		request cargorobot -m reachTarget : reachTarget($Slot5X, $Slot5Y)
+	}
+	Transition t0
+		whenReply targetReached     -> marking_pause
+		whenReply targetUnreachable -> abort_transfer
+
+	State marking_pause {
+		println("[CARGO SERVICE] marker device (emulated ~5 s pause)") color magenta
+		delay 5000
+	}
+	Goto move_to_reserved_slot
+
+	State move_to_reserved_slot {
+		[# val Rx = CurrentSlotToFill!!.x; val Ry = CurrentSlotToFill!!.y #]
+		println("[CARGO SERVICE] robot -> reserved slot") color magenta
+		request cargorobot -m reachTarget : reachTarget($Rx, $Ry)
+	}
+	Transition t0
+		whenReply targetReached     -> container_stored
+		whenReply targetUnreachable -> abort_transfer
+
+	State container_stored {
+		println("[CARGO SERVICE] container stored: mark slot occupied, robot -> HOME") color magenta
+		[# CurrentSlotToFill!!.content = Container() #]
+		request cargorobot -m reachTarget : reachTarget($HomeX, $HomeY)
+	}
+	Transition t0
+		whenReply targetReached     -> switch_to_disengaged
+		whenReply targetUnreachable -> switch_to_disengaged
+
+	// robot failure = the ONLY movement-time Out of service (terminal, Sprint 1)
+	State abort_transfer {
+		println("[CARGO SERVICE] robot failure -> hold OUT OF SERVICE (terminal)") color red
+		[# CurrentSlotToFill = null; CurrentHoldState = HoldState.OUT_OF_SERVICE #]
+	}
+	Goto waiting
+
+	State switch_to_disengaged {
+		[# CurrentSlotToFill = null; CurrentHoldState = HoldState.DISENGAGED #]
+	}
+	Goto waiting
+}
+
+// ============================================================================
+// logic sonar - interprets the RAW device stream; lives on the cargoservice node.
+// Ingests sonar_data with an embedded MQTT client (raw payloads are NOT qak
+// envelopes, so the framework's `subscribe`+whenEvent cannot parse them); the
+// callback only stores the latest reading in a thread-safe holder, and the FSM
+// polls it at ~1 Hz while its listening is open. Emitting the declared events
+// happens on the actor thread, never from the MQTT callback thread.
+// ============================================================================
+QActor sonar context ctxcargoservice {
+
+	[#
+		// last raw distance seen on sonar_data (cm); shared with the MQTT callback thread
+		val lastDistance = java.util.concurrent.atomic.AtomicReference<Double>(java.lang.Double.MAX_VALUE)
+		var mqttIn: org.eclipse.paho.client.mqttv3.MqttClient? = null
+
+		val DFREE = 30                 // must match cargoservice
+		val PERSISTENCE = 3            // 3 consecutive seconds at the 1 Hz device rate
+		var presenceCount = 0
+		var failureCount  = 0
+
+		fun ensureSubscribed() {
+			if (mqttIn != null) return
+			try {
+				val cli = org.eclipse.paho.client.mqttv3.MqttClient(
+					"tcp://localhost:1883", "logicSonarIn_" + System.currentTimeMillis(),
+					org.eclipse.paho.client.mqttv3.persist.MemoryPersistence())
+				val opts = org.eclipse.paho.client.mqttv3.MqttConnectOptions()
+				opts.isCleanSession = true
+				cli.connect(opts)
+				cli.subscribe("sonar_data") { _, message ->
+					val s = String(message.payload).trim()
+					val d = s.toDoubleOrNull()
+					if (d != null) lastDistance.set(d)
+				}
+				mqttIn = cli
+			} catch (e: Exception) {
+				println("[LOGIC SONAR] MQTT subscribe error: " + e.message)
+			}
+		}
+	#]
+
+	State s0 initial {
+		println("[LOGIC SONAR] started (idle: listening closed)") color yellow
+		[# ensureSubscribed() #]
+	}
+	Goto idle
+
+	State idle {
+		[# presenceCount = 0; failureCount = 0 #]
+	}
+	Transition t0
+		whenMsg start_detection -> observing
+
+	State observing {
+		// poll loop: one tick per second (aligned with the 1 Hz device rate)
+		autodispatch sonar_tick : sonar_tick(none)
+	}
+	Transition t0
+		whenMsg stop_detection -> idle
+		whenMsg sonar_tick     -> eval_measure
+
+	State eval_measure {
+		[#
+			val d = lastDistance.get()
+			if (d < DFREE / 2.0) { presenceCount += 1; failureCount = 0 }
+			else if (d > DFREE)  { failureCount  += 1; presenceCount = 0 }
+			else { presenceCount = 0; failureCount = 0 }
+		#]
+		delay 1000
+	}
+	Goto emit_detected if [# presenceCount >= PERSISTENCE #] else check_failure
+
+	// a stop_detection arriving during the 1 s tick is caught one tick later, in
+	// observing (whenMsg stop_detection -> idle): the loop converges to idle.
+	State check_failure { }
+	Goto emit_failure if [# failureCount >= PERSISTENCE #] else observing
+
+	State emit_detected {
+		println("[LOGIC SONAR] presence sustained -> container_detected") color green
+		[# presenceCount = 0; failureCount = 0 #]
+		emit container_detected : container_detected(none)
+	}
+	Goto observing
+
+	State emit_failure {
+		println("[LOGIC SONAR] failure sustained (D>DFREE 3s) -> out_of_service") color red
+		[# presenceCount = 0; failureCount = 0 #]
+		emit out_of_service : out_of_service(none)
+	}
+	Goto observing
+}
+
+// ============================================================================
+// cargorobot - pure protocol adapter reachTarget(X,Y) -> moverobot(X,Y,STEPTIME).
+// Unchanged from Sprint 1 (no halt: no out_of_service can reach the trip states).
+// ============================================================================
+QActor cargorobot context ctxcargoservice {
+	[# val StepTime = 350 #]
+
+	State s0 initial {
+		println("[CARGOROBOT] ready (adapter towards the external robotsmart)") color yellow
+	}
+	Goto waiting
+
+	State waiting { }
+	Transition t0
+		whenRequest reachTarget -> reaching
+
+	State reaching {
+		onMsg( reachTarget : reachTarget(TARGETX, TARGETY) ) {
+			[# val Tx = payloadArg(0); val Ty = payloadArg(1) #]
+			println("[CARGOROBOT] forwarding moverobot($Tx,$Ty) to robotsmart") color yellow
+			request robotsmart -m moverobot : moverobot($Tx, $Ty, $StepTime)
+		}
+	}
+	Transition t0
+		whenReply moverobotdone   -> target_ok
+		whenReply moverobotfailed -> target_fail
+
+	State target_ok {
+		replyTo reachTarget with targetReached : targetReached(ok)
+	}
+	Goto waiting
+
+	State target_fail {
+		replyTo reachTarget with targetUnreachable : targetUnreachable(fail)
+	}
+	Goto waiting
+}

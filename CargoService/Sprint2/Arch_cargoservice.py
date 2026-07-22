@@ -27,13 +27,17 @@ with Diagram('cargoserviceArch', show=False, outformat='png', graph_attr=graphat
 ### see https://renenyffenegger.ch/notes/tools/Graphviz/attributes/label/HTML-like/index
      with Cluster('ctxcargoservice', graph_attr=nodeattr):
           cargoservice=Custom('cargoservice','./qakicons/symActorWithobjSmall.png')
-          cargorobot=Custom('cargorobot','./qakicons/symActorWithobjSmall.png')
-     with Cluster('ctxdevices', graph_attr=nodeattr):
           sonar=Custom('sonar','./qakicons/symActorWithobjSmall.png')
+          cargorobot=Custom('cargorobot','./qakicons/symActorWithobjSmall.png')
+          simsonar=Custom('simsonar','./qakicons/symActorWithobjSmall.png')
+          simled=Custom('simled','./qakicons/symActorWithobjSmall.png')
      with Cluster('ctxrobotsmart', graph_attr=nodeattr):
           robotsmart=Custom('robotsmart(ext)','./qakicons/externalQActor.png')
-     sys >> Edge( label='sonar_distance', **evattr, decorate='true', fontcolor='darkgreen') >> cargoservice
-     sonar >> Edge( label='sonar_distance', **eventedgeattr, decorate='true', fontcolor='red') >> sys
+     sys >> Edge( label='container_detected', **evattr, decorate='true', fontcolor='darkgreen') >> cargoservice
+     sys >> Edge( label='out_of_service', **evattr, decorate='true', fontcolor='darkgreen') >> cargoservice
+     sonar >> Edge( label='container_detected', **eventedgeattr, decorate='true', fontcolor='red') >> sys
+     sonar >> Edge( label='out_of_service', **eventedgeattr, decorate='true', fontcolor='red') >> sys
      cargorobot >> Edge(color='magenta', style='solid', decorate='true', label='<moverobot<font color="darkgreen"> moverobotdone moverobotfailed</font> &nbsp; >',  fontcolor='magenta') >> robotsmart
      cargoservice >> Edge(color='magenta', style='solid', decorate='true', label='<reachTarget<font color="darkgreen"> targetReached targetUnreachable</font> &nbsp; >',  fontcolor='magenta') >> cargorobot
+     cargoservice >> Edge(color='blue', style='solid',  decorate='true', label='<start_detection &nbsp; stop_detection &nbsp; >',  fontcolor='blue') >> sonar
 diag

@@ -30,48 +30,119 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
-				fun LoadDistances(): List<Int> {
-					val fallback = listOf(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1)
-					// NOTE: the comment character of the table file is produced at runtime
-					// (35.toChar()): that literal character must NOT appear inside a qak
-					// expression block, or the editor mis-detects the end of the block
-					val commentChar = 35.toChar()
-					return try {
-						val vals = java.io.File("sonarDistances.txt").readLines()
-							.map { line -> line.substringBefore(commentChar).trim() }
-							.filter { line -> line.isNotEmpty() }
-							.flatMap { line -> line.split(",").map { p -> p.trim() } }
-							.filter { p -> p.isNotEmpty() }
-							.map { p -> p.toInt() }
-						if (vals.isEmpty()) fallback else vals
-					} catch (e: Exception) { fallback }
+				val lastDistance = java.util.concurrent.atomic.AtomicReference<Double>(java.lang.Double.MAX_VALUE)
+				var mqttIn: org.eclipse.paho.client.mqttv3.MqttClient? = null
+		
+				val DFREE = 30
+				val PERSISTENCE = 3
+				var presenceCount = 0
+				var failureCount  = 0
+		
+				fun ensureSubscribed() {
+					if (mqttIn != null) return
+					try {
+						val cli = org.eclipse.paho.client.mqttv3.MqttClient(
+							"tcp://localhost:1883", "logicSonarIn_" + System.currentTimeMillis(),
+							org.eclipse.paho.client.mqttv3.persist.MemoryPersistence())
+						val opts = org.eclipse.paho.client.mqttv3.MqttConnectOptions()
+						opts.isCleanSession = true
+						cli.connect(opts)
+						cli.subscribe("sonar_data") { _, message ->
+							val s = String(message.payload).trim()
+							val d = s.toDoubleOrNull()
+							if (d != null) lastDistance.set(d)
+						}
+						mqttIn = cli
+					} catch (e: Exception) {
+						println("[LOGIC SONAR] MQTT subscribe error: " + e.message)
+					}
 				}
-				val Distances = LoadDistances()
-				var MeasureIdx = 0
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State
-						CommUtils.outyellow("[SONAR] proactive publisher started (table of {Distances.size} distances, cyclic)")
+						CommUtils.outyellow("[LOGIC SONAR] started (idle: listening closed)")
+						 ensureSubscribed()  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition( edgeName="goto",targetState="do_publish", cond=doswitch() )
+					 transition( edgeName="goto",targetState="idle", cond=doswitch() )
 				}	 
-				state("do_publish") { //this:State
+				state("idle") { //this:State
 					action { //it:State
-						 val D = Distances[MeasureIdx % Distances.size]  
-						 MeasureIdx = MeasureIdx + 1  
-						emit("sonar_distance", "sonar_distance($D)" ) 
-						delay(1000) 
-						forward("sonar_next_measure", "sonar_next_measure(none)" ,name ) 
+						 presenceCount = 0; failureCount = 0  
 						//genTimer( actor, state )
 					}
 					//After Lenzi Aug2002
 					sysaction { //it:State
 					}	 	 
-					 transition(edgeName="t026",targetState="do_publish",cond=whenDispatch("sonar_next_measure"))
+					 transition(edgeName="t020",targetState="observing",cond=whenDispatch("start_detection"))
+				}	 
+				state("observing") { //this:State
+					action { //it:State
+						forward("sonar_tick", "sonar_tick(none)" ,name ) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition(edgeName="t021",targetState="idle",cond=whenDispatch("stop_detection"))
+					transition(edgeName="t022",targetState="eval_measure",cond=whenDispatch("sonar_tick"))
+				}	 
+				state("eval_measure") { //this:State
+					action { //it:State
+						
+									val d = lastDistance.get()
+									if (d < DFREE / 2.0) { presenceCount += 1; failureCount = 0 }
+									else if (d > DFREE)  { failureCount  += 1; presenceCount = 0 }
+									else { presenceCount = 0; failureCount = 0 }
+						delay(1000) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="emit_detected", cond=doswitchGuarded({ presenceCount >= PERSISTENCE  
+					}) )
+					transition( edgeName="goto",targetState="check_failure", cond=doswitchGuarded({! ( presenceCount >= PERSISTENCE  
+					) }) )
+				}	 
+				state("check_failure") { //this:State
+					action { //it:State
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="emit_failure", cond=doswitchGuarded({ failureCount >= PERSISTENCE  
+					}) )
+					transition( edgeName="goto",targetState="observing", cond=doswitchGuarded({! ( failureCount >= PERSISTENCE  
+					) }) )
+				}	 
+				state("emit_detected") { //this:State
+					action { //it:State
+						CommUtils.outgreen("[LOGIC SONAR] presence sustained -> container_detected")
+						 presenceCount = 0; failureCount = 0  
+						emit("container_detected", "container_detected(none)" ) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="observing", cond=doswitch() )
+				}	 
+				state("emit_failure") { //this:State
+					action { //it:State
+						CommUtils.outred("[LOGIC SONAR] failure sustained (D>DFREE 3s) -> out_of_service")
+						 presenceCount = 0; failureCount = 0  
+						emit("out_of_service", "out_of_service(none)" ) 
+						//genTimer( actor, state )
+					}
+					//After Lenzi Aug2002
+					sysaction { //it:State
+					}	 	 
+					 transition( edgeName="goto",targetState="observing", cond=doswitch() )
 				}	 
 			}
 		}

@@ -54,8 +54,7 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 					action { //it:State
 						if( checkMsgContent( Term.createTerm("reachTarget(TARGETX,TARGETY)"), Term.createTerm("reachTarget(TARGETX,TARGETY)"), 
 						                        currentMsg.msgContent()) ) { //set msgArgList
-								 val Tx = payloadArg(0)  
-								 val Ty = payloadArg(1)  
+								 val Tx = payloadArg(0); val Ty = payloadArg(1)  
 								CommUtils.outyellow("[CARGOROBOT] forwarding moverobot($Tx,$Ty) to robotsmart")
 								request("moverobot", "moverobot($Tx,$Ty,$StepTime)" ,"robotsmart" )  
 						}
@@ -69,7 +68,6 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 				}	 
 				state("target_ok") { //this:State
 					action { //it:State
-						CommUtils.outgreen("[CARGOROBOT] target reached")
 						answer("reachTarget", "targetReached", "targetReached(ok)"   )  
 						//genTimer( actor, state )
 					}
@@ -80,7 +78,6 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 				}	 
 				state("target_fail") { //this:State
 					action { //it:State
-						CommUtils.outred("[CARGOROBOT] target unreachable")
 						answer("reachTarget", "targetUnreachable", "targetUnreachable(fail)"   )  
 						//genTimer( actor, state )
 					}

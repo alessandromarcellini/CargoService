@@ -13,8 +13,8 @@
    3) robotsmart26         (robot service,          gradlew run, TCP 8020) -> new window
    4) Sprint 2 application  (ctxcargoservice:        gradlew run, TCP 8030) -> new window
                              cargoservice + cargorobot + logic sonar
-   5) devices              (FIELD  = flash the Pico W by hand, see below;
-                            SIMULATED = -Simulated flag: launch the sim-devices model)
+   5) devices              (FIELD = flash the Pico W by hand; SIMULATED = the sim
+                            sonar+LED run INSIDE the app, built from the sim model)
    6) the web GUI          (static ioport page, opened in your default browser)
 
  USAGE (from the repo root):
@@ -27,9 +27,10 @@
  STOP:
      .\stop_all2.ps1
 
- NOTE (adjust once the Sprint 2 code is generated):
-   - $guiPage        : where the static GUI page lands.
-   - $simDevicesTask : the Gradle task that launches cargoservice_sprint2_simdevices.qak.
+ NOTE:
+   - $guiPage : where the static GUI page lands (adjust if you move it).
+   - FIELD vs SIMULATED is a MODEL choice (which .qak you generate), not a runtime flag:
+     cargoservice_sprint2.qak (field) / cargoservice_sprint2_sim.qak (simulated superset).
    - mosquitto.yml must expose BOTH listeners (1883 native + 9001 websocket).
 ================================================================================
 #>
@@ -45,9 +46,8 @@ $vrYaml       = Join-Path $root 'yamls\vrWithGui26.yaml'
 $robotDir     = Join-Path $root 'robotsmart26'
 $sprint2Dir   = Join-Path $root 'CargoService\Sprint2'
 
-# --- adjust these to match the Sprint 2 build once the code exists ----------
-$guiPage        = Join-Path $sprint2Dir 'web\ioport.html'   # static GUI page (MQTT-over-WebSocket client)
-$simDevicesTask = 'runSimDevices'                            # Gradle task launching cargoservice_sprint2_simdevices.qak
+# --- paths -------------------------------------------------------------------
+$guiPage = Join-Path $sprint2Dir 'web\ioport.html'   # static GUI page (MQTT-over-WebSocket client)
 
 function Write-Step($n, $msg) { Write-Host "`n[$n] $msg" -ForegroundColor Cyan }
 
@@ -109,18 +109,20 @@ Start-Process -FilePath 'powershell' -ArgumentList @(
 )
 Wait-Tcp -Port 8030 -TimeoutSec 120 -Label "cargoservice (TCP 8030)"
 
-# --- 5) devices: simulated model, or a reminder to flash the Pico W --------
+# --- 5) devices --------------------------------------------------------------
+# The devices are chosen in the MODEL, not at runtime: the simulated sonar+LED are
+# part of the application when it is built from cargoservice_sprint2_sim.qak
+# (co-located in ctxcargoservice), so step 4 already started them. This flag only
+# prints the right reminder.
 if ($Simulated) {
-    Write-Step 5 "Starting the SIMULATED devices model ($simDevicesTask) in a separate window ..."
-    Start-Process -FilePath 'powershell' -ArgumentList @(
-        '-NoExit', '-Command',
-        "Set-Location '$sprint2Dir'; Write-Host 'sim devices (table sonar + simulated LED) - leave this window open' -ForegroundColor Cyan; .\gradlew.bat $simDevicesTask --console=plain"
-    )
+    Write-Step 5 "SIMULATED devices: they run INSIDE the application (built from cargoservice_sprint2_sim.qak)."
+    Write-Host "    -> No separate process. If the sim sonar/LED are not running, you built the FIELD model:" -ForegroundColor Yellow
+    Write-Host "       give cargoservice_sprint2_sim.qak the .qak extension (field one -> .qaktt), regenerate, rebuild." -ForegroundColor Yellow
 } else {
-    Write-Step 5 "FIELD variant: no simulated devices started."
+    Write-Step 5 "FIELD variant: flash the Pico W."
     Write-Host "    -> Flash pico_code\pico_mqtt.py on the Pico W (set Wi-Fi SSID/password and the broker IP" -ForegroundColor Yellow
     Write-Host "       to this machine's LAN address); the board joins on sonar_data / led_data automatically." -ForegroundColor Yellow
-    Write-Host "    -> (Run with  -Simulated  to skip the hardware and use the table-driven sonar instead.)" -ForegroundColor Yellow
+    Write-Host "    -> (For no hardware: build the app from cargoservice_sprint2_sim.qak and run with -Simulated.)" -ForegroundColor Yellow
 }
 
 # --- 6) open the web GUI (IOPort) in the default browser -------------------

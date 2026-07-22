@@ -1,0 +1,17 @@
+# sonarDistances.txt - statically configurable distance table for the SIMULATED
+# sonar (cargoservice_sprint2_sim.qak). Values are in CENTIMETRES, matching the
+# physical HC-SR04. The sim sonar publishes one value per second on the RAW MQTT
+# topic "sonar_data", cycling through this list.
+#
+# DFREE = 30 cm is the FREE-PORT baseline distance. So:
+#   * FREE / idle : D ~= DFREE (between DFREE/2 and DFREE, e.g. 28) -> no trigger
+#   * PRESENCE    : D < DFREE/2 (< 15 cm, e.g. 5) sustained 3 s -> container_detected
+#   * FAILURE     : D > DFREE (> 30 cm, e.g. 120) sustained 3 s -> out_of_service
+#                   (echo lost / farther than the empty port: a sonar malfunction)
+# NOTE: a free-port value must NOT be > DFREE, or it is read as a failure. That is
+# why "free" is 28 here, not 100.
+#
+# Default demo cycle: ~8 s of free port (28 cm), then a sustained presence
+# (5 cm x4 -> container detected). To demo the sonar FAILURE instead, replace the
+# tail with a sustained > 30 cm run (e.g. 120, 120, 120) while a request is pending.
+28, 28, 28, 28, 28, 28, 28, 28, 5, 5, 5, 5
