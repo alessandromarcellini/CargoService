@@ -1,0 +1,42 @@
+Contesto:
+
+
+
+
+
+Ho predisposto l'ambiente per il nuovo Sprint2 creando la nuova directory e inizializzando il gradle project insieme al file html del documento nella cartella userDocs
+
+
+
+Ho allegato dei pdf relativi allo svolgimento dello sprint2 eseguito da altri gruppi di studenti
+
+
+
+Task:
+
+
+
+
+
+Analizza i pdf degli altri gruppi riguardanti lo sprint2 per capirne la struttura, poi rianalizza il documento sprint1 v1 del mio progetto, per ricordarti qual'è il punto di partenza. Analizza anche il codice scritto per i devices distribuiti sul picow (led + sonar), che si trova nella cartella picocode nella root del progetto
+
+
+
+
+
+Modifica e compila il documento del mio sprint2 (il cui contenuto attualmente è dummy)
+
+
+
+Fermati senza scrivere alcuna riga di codice e fammi le tue considerazioni finali sullo stato del lavoro compiuto e del nostro sprint2
+
+
+
+Vincoli:
+
+
+
+
+
+I documenti sprint2 degli altri gruppi che ti ho allegato vanno presi come guida, non vanno copiati di sana pianta, in quanto alcune scelte progettuali e di analisi sono state fatte in modo diverso: ogni gruppo ha seguito il suo percorso
+

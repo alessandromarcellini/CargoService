@@ -1,3 +1,0 @@
-robe da sistemare:
-    - alla webgui si può connettere un solo utente alla volta;
-    - togliere dal qak la guardia per le richieste che arrivano non dalla ioport;

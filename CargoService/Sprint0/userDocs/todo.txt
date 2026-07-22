@@ -1,5 +1,5 @@
 
-# ANALISI REQUISITI
+ANALISI REQUISITI
 
 - Qual'è la lunghezza del codice a barre?
 - Le dimensioni del container possono essere considerate intere?
