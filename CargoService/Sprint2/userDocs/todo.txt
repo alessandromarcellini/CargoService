@@ -1,42 +1,12 @@
-Contesto:
 
+- il sonar logico ascolta e lancia l'evento out of service solo durante la timewindow, gli altri eventi misurazioni lanciati dal sonar fisico sono ignorati
 
+- out of service mentre il robot si sta muovendo può avvenire solo se il robot non riesce a raggiungere il target di destinazione. dato che il sonar logico ascolta gli eventi del sonar solo durante la time window che in quel momento è chiusa
 
+- progettazione hardware e firmware va discussa nel documento in fase di progettazione, non come se fosse qualcosa di parallelo che viene fatto al di fuori
 
+- nella struttura logica dello sprint2 ci vanno messi anche il sonar il led e il nodo fisico?
 
-Ho predisposto l'ambiente per il nuovo Sprint2 creando la nuova directory e inizializzando il gradle project insieme al file html del documento nella cartella userDocs
+- per la versione simulata dei devices creare un nuovo file .qak con il sonar fisico (legge dalla tabella i valori) e il led simulati
 
-
-
-Ho allegato dei pdf relativi allo svolgimento dello sprint2 eseguito da altri gruppi di studenti
-
-
-
-Task:
-
-
-
-
-
-Analizza i pdf degli altri gruppi riguardanti lo sprint2 per capirne la struttura, poi rianalizza il documento sprint1 v1 del mio progetto, per ricordarti qual'è il punto di partenza. Analizza anche il codice scritto per i devices distribuiti sul picow (led + sonar), che si trova nella cartella picocode nella root del progetto
-
-
-
-
-
-Modifica e compila il documento del mio sprint2 (il cui contenuto attualmente è dummy)
-
-
-
-Fermati senza scrivere alcuna riga di codice e fammi le tue considerazioni finali sullo stato del lavoro compiuto e del nostro sprint2
-
-
-
-Vincoli:
-
-
-
-
-
-I documenti sprint2 degli altri gruppi che ti ho allegato vanno presi come guida, non vanno copiati di sana pianta, in quanto alcune scelte progettuali e di analisi sono state fatte in modo diverso: ogni gruppo ha seguito il suo percorso
-
+- possiamo fare in modo che anche i test usino la comunicazione push per lo stato della hold, come fa anche l'io port, in questo modo eliminiamo boilerplate code inutile (rimuovi i messaggi in più dichiarati per il pull dello stato della hold)
