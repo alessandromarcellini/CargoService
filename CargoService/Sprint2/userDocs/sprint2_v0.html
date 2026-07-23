@@ -471,9 +471,11 @@ div.imagedesc{
 </div>
 
 
-<h2>Test plans</h2>
+<h2 id="test-plans">Test plans</h2>
 <div class="remark">
 	<b>Strategy.</b> Same discipline as Sprint 1: automated plans with machine-checkable Given / When / Then and exact assertions. The observation channel changes: a plan now <b>subscribes to the pushed <tt>hold_state</tt></b> (as the GUI does) instead of polling a pull reply, and sets its <i>Given</i> with <tt>preset_hold</tt>. Every device- and boundary-facing effect travels on an inspectable pub/sub transport, so a plan can both <i>inject</i> (publish raw distances or a boundary request as the device / GUI would) and <i>observe</i> (subscribe to the blink commands and to <tt>hold_state</tt>) with no test-only hook inside the components. The Sprint 1 suite is re-run as a regression gate, adapted only where the carrier changed (boundary request published on <tt>load_requests</tt>; assertions read from the <tt>hold_state</tt> feed).
+	<br><br>
+	<b>Tests inherited from the previous sprints.</b> This sprint's suite carries the earlier plans forward, re-run as a regression on the new MQTT push chain: the <a href="../../Sprint0/userDocs/sprint0_v2.html#test-plans" target="_blank" rel="noopener noreferrer">Sprint&nbsp;0 Test plans</a> (the three load-request answers) and the <a href="../../Sprint1/userDocs/sprint1_v1.html#test-plans" target="_blank" rel="noopener noreferrer">Sprint&nbsp;1 Test plans</a> (full cycle, refuse-on-full, retrylater / boundary, engagement timeout). TP2.4 already re-runs TP1.5 on this chain; the refuse-on-full and engagement-timeout cases &mdash; not otherwise present in the TP2.x list &mdash; are supplied by the ported classes, so a single <tt>gradlew test</tt> exercises the Sprint&nbsp;0, Sprint&nbsp;1 and Sprint&nbsp;2 plans together.
 	<br><br>
 
 	<h4>TP2.1 &mdash; LED contract at the engagement boundaries</h4>
@@ -512,7 +514,23 @@ div.imagedesc{
 	<b>Then</b> the engagement in progress is undisturbed (its trip completes normally, seen on the <tt>hold_state</tt> feed), no second reservation ever appears in any <tt>hold_state</tt> publication, and the busy evidence is published for the display. This is the service-side no-queueing guard &mdash; promoted from test hook to production defense &mdash; observable end-to-end.
 	<br><br>
 	
-	<b>Note.</b> The plans above are the <i>specification</i> of this sprint's verification; their JUnit realization follows the Sprint 1 pattern (test JVM boots the qak test configuration, test client on the declared channels) extended with an MQTT client for the device and boundary topics. The realization is part of the sprint's implementation work.
+	<b>Realization.</b> The plans above are implemented following the Sprint&nbsp;1 pattern (the test JVM boots the qak test configuration; the test client drives the declared channels) extended with an MQTT client for the device and boundary topics. The current-sprint plans are in <a href="../test/it/unibo/test/TestPlanSprint2.kt" target="_blank" rel="noopener noreferrer">test/it/unibo/test/TestPlanSprint2.kt</a> (<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint2/test/it/unibo/test/TestPlanSprint2.kt" target="_blank" rel="noopener noreferrer">view on GitHub</a>), with the robot double <a href="../test/it/unibo/mock/MockCargorobot.kt" target="_blank" rel="noopener noreferrer">MockCargorobot.kt</a> and the test configuration <a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint2/cargoservicetest.pl" target="_blank" rel="noopener noreferrer">cargoservicetest.pl</a>. The previous sprints' plans, adapted to this MQTT push architecture, are re-run from <a href="../test/it/unibo/test/TestPlanSprint0.kt" target="_blank" rel="noopener noreferrer">TestPlanSprint0.kt</a> and <a href="../test/it/unibo/test/TestPlanSprint1.kt" target="_blank" rel="noopener noreferrer">TestPlanSprint1.kt</a>, so a single test run exercises all three sprints' plans on the current design.
+	<br><br>
+
+	<h4>How to run the TestPlans</h4>
+	The unit variant drives everything over MQTT and asserts on the pushed <tt>hold_state</tt>. It needs the <b>Mosquitto broker</b> on <tt>localhost:1883</tt>; the test JVM opens TCP&nbsp;8030 and boots the qak test configuration by itself (MockCargorobot, so robotsmart26 is not required for the unit plans).
+	<ol>
+		<li><b>Start the broker</b> (if not already up): <tt>docker compose -f yamls/mosquitto.yml -p cargo-mqtt up -d</tt>.</li>
+		<li><b>Make sure TCP&nbsp;8030 is free</b> (no cargoservice application running): the test JVM must bind it.</li>
+		<li><b>Regenerate</b> the active <tt>.qak</tt> to Kotlin in the qak toolchain if the model changed, then <b>run the tests</b> from <tt>CargoService/Sprint2</tt>:
+			<ul>
+				<li>Windows: <tt>gradlew.bat cleanTest test</tt></li>
+				<li>Linux / macOS: <tt>./gradlew cleanTest test</tt></li>
+			</ul>
+			Expected: <tt>BUILD SUCCESSFUL</tt>, the report in <tt>build/reports/tests/test/index.html</tt>. The run takes a few minutes (1&nbsp;Hz sonar, 3&nbsp;s persistence, 5&nbsp;s marking, 30&nbsp;s window).</li>
+		<li><b>One-shot helpers (repo root).</b> <tt>run_tests2.ps1</tt> (Windows) starts the required services &mdash; Mosquitto, the robot GUI (vrWithGui26) and robotsmart26 &mdash; then runs the suite; <tt>stop_tests2.ps1</tt> tears them down and cleans up. On Git&nbsp;Bash / WSL / Linux, <tt>bash run_tests2.sh</tt> starts only the broker and runs the unit plans.</li>
+		<li><b>Integration variant (TP2.5, on demand).</b> Like Sprint&nbsp;1's TP1.6 it runs against the real robotsmart26 (started by <tt>run_tests2.ps1</tt>); the default unit run stays independent from the robot environment.</li>
+	</ol>
 </div>
 
 

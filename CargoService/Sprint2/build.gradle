@@ -137,6 +137,12 @@ sourceSets {
 // The test JVM starts the qak test config (cargoservicetest.pl) by itself.
 test {
     useJUnit()
+    // Each TestPlan class boots its OWN copy of the qak test configuration on TCP 8030
+    // (and its own MQTT client), so run one class per JVM (sequentially): this lets the
+    // Sprint 0 and Sprint 1 regressions (TestPlanSprint0, TestPlanSprint1) run together
+    // with TestPlanSprint2 under a single 'gradlew test' without clashing on port 8030.
+    forkEvery = 1
+    maxParallelForks = 1
     testLogging {
         events "passed", "skipped", "failed"
         showStandardStreams = true

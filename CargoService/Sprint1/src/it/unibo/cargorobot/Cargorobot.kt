@@ -29,7 +29,7 @@ class Cargorobot ( name: String, scope: CoroutineScope, isconfined: Boolean=fals
 	override fun getBody() : (ActorBasicFsm.() -> Unit){
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
-		 val StepTime = 10  
+		 val StepTime = 350  
 		return { //this:ActionBasciFsm
 				state("s0") { //this:State
 					action { //it:State

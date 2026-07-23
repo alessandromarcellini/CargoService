@@ -149,6 +149,12 @@ sourceSets {
 test {
     useJUnit()
     exclude '**/IntegrationTestPlan*'
+    // Each TestPlan class boots its OWN copy of the qak test configuration on TCP 8030,
+    // so run one class per JVM (sequentially): this lets TestPlanSprint0 (the Sprint 0
+    // regression) and TestPlanSprint1 run together under a single 'gradlew test' without
+    // clashing on port 8030.
+    forkEvery = 1
+    maxParallelForks = 1
     testLogging {
         events "passed", "skipped", "failed"
         showStandardStreams = true

@@ -42,18 +42,18 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 		        val DETECT_PERSISTENCE = 3
 		        var DetectCount = 0
 		
-				var IOPortX = 2
-				var IOPortY = 1
+				var IOPortX = 4
+				var IOPortY = 0
 				var HomeX = 0
 				var HomeY = 0
 				var Slot5X = 2
-				var Slot5Y = 6
+				var Slot5Y = 5
 		
 				var SlotsList: List<ISlot> = listOf(
-					Slot(1, 1, 2),
-			        Slot(2, 1, 5),
-			        Slot(3, 3, 2),
-			        Slot(4, 3, 5)
+					Slot(1, 1, 1),
+			        Slot(2, 1, 4),
+			        Slot(3, 3, 1),
+			        Slot(4, 3, 4)
 			    )
 		
 			    fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? {

@@ -1115,7 +1115,7 @@ Our abstract <tt>cargorobot</tt> needs exactly one thing: "reach a target". Robo
 </ul>
 </div>
 
-<h2>Test plans</h2>
+<h2 id="test-plans">Test plans</h2>
 <div class="remark">
 	The testplan is based on the executable model cargo_service_sprint0_mock.qak. It can be found <a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/src/cargo_service_sprint0_mock.qaktt">here</a>
 	<br>
@@ -1181,91 +1181,34 @@ Our abstract <tt>cargorobot</tt> needs exactly one thing: "reach a target". Robo
 	using mutually exclusive branches, is scheduled for Sprint 1.
 
 	<br><br>
-	<b>Automated test source (TP0.1).</b> The code below is the JUnit test that plays the role of the
-	IOPort boundary: it opens a TCP client towards ctxcargoservice on localhost:8020, sends the
-	modelled load_request(none), and asserts the specific reply. It is deliberately written so that
-	a wrong branch (load_refused / retrylater) turns the test red.
-	<pre>
-package it.unibo.test
+	<b>Automated test source (TP0.1).</b> The JUnit test that plays the role of the
+	IOPort boundary &mdash; it opens a TCP client towards ctxcargoservice on localhost:8020, sends the
+	modelled load_request(none) and asserts the specific reply (deliberately written so that a wrong
+	branch, load_refused / retrylater, turns the test red) &mdash; is in the file
+	<a href="../test/it/unibo/test/TestPlanSprint0.kt" target="_blank" rel="noopener noreferrer">test/it/unibo/test/TestPlanSprint0.kt</a>
+	(<a href="https://github.com/alessandromarcellini/CargoService/blob/main/CargoService/Sprint0/test/it/unibo/test/TestPlanSprint0.kt" target="_blank" rel="noopener noreferrer">view on GitHub</a>).
 
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
-import unibo.basicomm23.interfaces.Interaction
-import unibo.basicomm23.tcp.TcpClientSupport
-import unibo.basicomm23.utils.CommUtils
-
-class TestPlanSprint0 {
-
-    private val HOST = "localhost"
-    private val PORT = 8020            // ctxcargoservice, from cargoservice_sprint0.qak
-    private var conn: Interaction? = null
-
-    @Before
-    fun setup() {
-        CommUtils.outcyan("Connecting to cargoservice ($HOST:$PORT)")
-        try {
-            conn = TcpClientSupport.connect(HOST, PORT, 10)
-        } catch (e: Exception) {
-            fail("TCP connection error: make sure the cargoservice server is running on $HOST:$PORT. ${e.message}")
-        }
-    }
-
-    @After
-    fun teardown() {
-        conn?.close()
-        CommUtils.outcyan("Connection closed")
-    }
-
-    // TP0.1 - happy path. Asserts the SPECIFIC expected reply, not merely
-    // "one of the three replies", so a wrong branch turns the test red.
-    @Test
-    fun testLoadAcceptedOnEmptyHold() {
-        CommUtils.outmagenta("TP0.1: send load_request on an empty hold, expect load_accepted(slot 1..4)")
-        try {
-            // request envelope built from the model:
-            // msg(msgId, msgType, sender, receiver, content, seqNumber)
-            val requestMsg =
-                "msg(load_request,request,testunit,cargoservice,load_request(none),1)"
-
-            val reply = conn!!.request(requestMsg)
-            CommUtils.outgreen("Reply from cargoservice: $reply")
-            assertNotNull("No reply received from cargoservice", reply)
-
-            val body = reply.toString()
-
-            // Then: must be a load_accepted, and NOT a refused/retrylater
-            assertTrue(
-                "Expected load_accepted but got: $body",
-                body.contains("load_accepted")
-            )
-            assertTrue(
-                "Unexpected extra/other reply mixed in: $body",
-                !body.contains("load_refused") &amp;&amp; !body.contains("retrylater")
-            )
-
-            // And the reserved slot id must be one of the four storage slots 1..4
-            val slotId = extractSlotId(body)
-            assertNotNull("Could not read the reserved slot id from: $body", slotId)
-            assertTrue(
-                "Reserved slot id out of range (expected 1..4), got: $slotId",
-                slotId!! in 1..4
-            )
-        } catch (e: Exception) {
-            fail("Test failed during execution: ${e.message}")
-        }
-    }
-
-    // Extracts the integer argument of load_accepted(&lt;id&gt;) from the reply text.
-    private fun extractSlotId(reply: String): Int? {
-        val m = Regex("""load_accepted\(\s*(\d+)\s*\)""").find(reply) ?: return null
-        return m.groupValues[1].toIntOrNull()
-    }
-}
-	</pre>
+	<br><br>
+	<h4>How to run the TestPlans</h4>
+	TP0.1 is a JUnit&nbsp;4 class that plays the ioport boundary over TCP. Unlike Sprint&nbsp;1, the
+	Sprint&nbsp;0 model does not self-start from the test JVM, so the executable model must be up first:
+	<ol>
+		<li><b>Start the Sprint&nbsp;0 mock configuration</b> so that ctxcargoservice is listening on
+			localhost:8020 &mdash; from <tt>CargoService/Sprint0</tt> run <tt>gradlew run</tt> (main
+			<tt>it.unibo.ctxmock.MainCtxmockKt</tt>, built from <tt>cargo_service_sprint0_mock.qak</tt>).</li>
+		<li><b>Make sure port 8020 is free</b> for the model (no previous, interrupted context still alive).</li>
+		<li><b>Run the test</b> from <tt>CargoService/Sprint0</tt>:
+			<ul>
+				<li>Windows: <tt>gradlew.bat test --tests it.unibo.test.TestPlanSprint0</tt></li>
+				<li>Linux / macOS: <tt>./gradlew test --tests it.unibo.test.TestPlanSprint0</tt></li>
+			</ul>
+			Expected result: <tt>BUILD SUCCESSFUL</tt>, 1 test completed, 0 failed; the browsable report is
+			in <tt>build/reports/tests/test/index.html</tt>.</li>
+	</ol>
+	<i>Note.</i> TP0.1 is the only case automatable in Sprint&nbsp;0 (the hold state cannot yet be preset
+	from the outside); the refuse and retrylater cases become automatable in Sprint&nbsp;1, where the
+	service is made observable/controllable. From Sprint&nbsp;1 on this plan is re-run as a regression on
+	each later architecture (see the Test plans of Sprint&nbsp;1 and Sprint&nbsp;2).
 
 </div>
 

@@ -7,6 +7,7 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.junit.AfterClass
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
@@ -19,22 +20,23 @@ import java.util.Collections
 import kotlin.concurrent.thread
 
 /**
- * TestPlanSprint2 - automated TestPlans over the Sprint 2 MQTT push channel.
+ * TestPlanSprint1 (Sprint 2 regression) — the Sprint 1 plan set, re-run on the
+ * Sprint 2 MQTT push architecture.
  *
- * PREREQUISITE: the Mosquitto broker MUST be running (tcp://localhost:1883):
- *   docker compose -f yamls/mosquitto.yml up -d
- * The test JVM starts the qak test configuration (cargoservicetest.pl) by itself.
+ * The Sprint 1 plans (TP1.1..TP1.5) were driven over TCP with a pull get_hold.
+ * Sprint 2 replaced pull observation with the pushed `hold_state` feed and moved
+ * the boundary request onto the `load_requests` topic, so the same scenarios are
+ * re-expressed here on the current carrier (as TestPlanSprint2 does). This class
+ * also supplies the refuse-on-full (TP1.2) and the engagement-timeout (TP1.4)
+ * cases, which are not otherwise present in the TP2.x list, so the current
+ * design is checked against the whole verified history.
  *
- * How the test plays the external nodes:
- *   - as the web GUI : publishes the load request as a qak envelope on load_requests,
- *                       and SUBSCRIBES to hold_state to observe the pushed state (the
- *                       Sprint 2 observation channel - no pull get_hold anymore);
- *   - as the device  : publishes raw distances on sonar_data, and SUBSCRIBES to
- *                       led_data to observe the LED commands;
- *   - as a test only : sets the Given via preset_hold over TCP (8030) request/reply.
+ * PREREQUISITE: the Mosquitto broker MUST be running (tcp://localhost:1883).
+ * build.gradle runs the test task with forkEvery = 1, so this class boots its
+ * own copy of the qak test configuration in its own JVM (TCP 8030).
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-class TestPlanSprint2 {
+class TestPlanSprint1 {
 
     companion object {
         private const val HOST = "localhost"
@@ -48,17 +50,15 @@ class TestPlanSprint2 {
 
         private lateinit var mqtt: MqttClient
 
-        // latest holdstatus content seen on hold_state, e.g. "engaged,working,reserved,free,free,free,1"
         @Volatile
         private var lastHold: String = ""
-        // observed LED commands, in order
         private val ledCmds = Collections.synchronizedList(ArrayList<String>())
         private var seq = 1
 
         @BeforeClass
         @JvmStatic
         fun startAll() {
-            CommUtils.outcyan("TestPlanSprint2 | starting the qak test configuration (cargoservicetest.pl)")
+            CommUtils.outcyan("TestPlanSprint1 (regression) | starting the qak test configuration (cargoservicetest.pl)")
             thread(isDaemon = true) {
                 runBlocking {
                     QakContext.createContexts(HOST, this, "cargoservicetest.pl", "sysRules.pl", "ctxcargoservice")
@@ -66,7 +66,7 @@ class TestPlanSprint2 {
             }
             Thread.sleep(6000) // let the context server and the actors boot
 
-            mqtt = MqttClient(BROKER, "testplan2_" + System.currentTimeMillis(), MemoryPersistence())
+            mqtt = MqttClient(BROKER, "testplan1_" + System.currentTimeMillis(), MemoryPersistence())
             val opts = MqttConnectOptions().apply { isCleanSession = true }
             mqtt.connect(opts)
             mqtt.subscribe(TOPIC_HOLD) { _, m ->
@@ -86,8 +86,8 @@ class TestPlanSprint2 {
     }
 
     // ---------------------------------------------------------------- helpers
+    // (identical to TestPlanSprint2: same push contract, same test-support hooks)
 
-    /** preset_hold over TCP (the only surviving test-support request/reply). */
     private fun presetHold(config: String) {
         val conn: Interaction = TcpClientSupport.connect(HOST, TCP_PORT, 10)
         try {
@@ -109,7 +109,6 @@ class TestPlanSprint2 {
         mqtt.publish(TOPIC_SONAR, org.eclipse.paho.client.mqttv3.MqttMessage(distanceCm.toString().toByteArray()))
     }
 
-    /** publish the given distance once per second for [seconds] seconds. */
     private fun streamSonar(distanceCm: Number, seconds: Int) {
         repeat(seconds) { publishSonar(distanceCm); Thread.sleep(1000) }
     }
@@ -118,6 +117,8 @@ class TestPlanSprint2 {
         val parts = lastHold.split(",")
         return if (idx < parts.size) parts[idx] else ""
     }
+
+    private fun occupiedCount(): Int = Regex("occupied").findAll(lastHold).count()
 
     private fun waitUntil(timeoutMs: Long, cond: () -> Boolean): Boolean {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -130,92 +131,76 @@ class TestPlanSprint2 {
 
     // ------------------------------------------------------------- TestPlans
 
-    /** TP2.4 - detection through the logic sonar: full load cycle completes. */
+    /** TP1.1 — load accepted on an empty hold (inherited from TP0.1). */
     @Test
-    fun test1_detectionFullCycle() {
+    fun test1_loadAcceptedOnEmptyHold() {
         presetHold("empty")
-        ledCmds.clear()
         publishLoadRequest()
-        assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
+        assertTrue("the load request must be accepted (system engaged)",
+            waitUntil(6000) { holdField(0) == "engaged" })
 
-        // sustained presence (< DFREE/2 = 15 cm) for a few seconds -> container_detected
         streamSonar(5, 5)
-
-        // trip completes (mock robot confirms + 5 s marking pause) -> disengaged, one slot occupied
-        assertTrue("cycle should end disengaged with a slot occupied",
+        assertTrue("the accepted load must complete: disengaged with a slot occupied",
             waitUntil(25000) { holdField(0) == "disengaged" && lastHold.contains("occupied") })
     }
 
-    /** TP2.1 - LED contract: start_blinking at acceptance, stop_blinking at the exit. */
+    /** TP1.2 — load refused when the hold is full (deferred from Sprint 0). */
     @Test
-    fun test2_ledContract() {
-        presetHold("empty")
-        ledCmds.clear()
+    fun test2_loadRefusedOnFullHold() {
+        presetHold("full")
         publishLoadRequest()
-        assertTrue("start_blinking expected at acceptance", waitUntil(6000) { ledCmds.contains("start_blinking") })
 
-        streamSonar(5, 5)
-        assertTrue("stop_blinking expected at the exit", waitUntil(25000) { ledCmds.contains("stop_blinking") })
+        Thread.sleep(3000)
+        assertFalse("a full hold must not become engaged", holdField(0) == "engaged")
+        assertTrue("expected the hold to stay disengaged: $lastHold", holdField(0) == "disengaged")
+        assertEquals("the four slots must still be occupied: $lastHold", 4, occupiedCount())
     }
 
-    /** TP2.2 - sonar-driven Out of service during the window (terminal). */
+    /** TP1.3 — retry later when the system is engaged: a racing second request is never queued. */
     @Test
-    fun test3_sonarOutOfService() {
+    fun test3_retryLaterWhenEngaged() {
         presetHold("empty")
         publishLoadRequest()
         assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
 
-        // sustained failure (> DFREE = 30 cm) for a few seconds -> out_of_service
-        streamSonar(120, 5)
-        assertTrue("hold should turn out of service", waitUntil(10000) { holdField(0) == "outofservice" })
-
-        // permanent: a further request stays out of service
-        publishLoadRequest()
-        assertTrue("still out of service after a new request",
-            waitUntil(4000) { holdField(0) == "outofservice" })
-    }
-
-    /** TP2.3 - failure debounce: a transient far reading (<3 s) must NOT kill the system. */
-    @Test
-    fun test4_failureDebounce() {
-        presetHold("empty")
-        publishLoadRequest()
-        assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
-
-        // Establish a valid baseline first: the logic sonar seeds its last reading to FAR
-        // (Double.MAX_VALUE), so with no real reading the window opens already counting failures
-        // and even a 2 s burst tips it over the 3 s threshold. Feed 2 s of a neutral MID-RANGE
-        // distance (DFREE/2 < 22 < DFREE: sensor working, nothing close -> no detection, no failure),
-        // THEN the transient 2 s failure (< 3 s persistence), THEN the presence.
-        streamSonar(22, 2)   // neutral baseline
-        streamSonar(120, 2)  // 2 s of failure (not sustained): must NOT trip Out of service
-        streamSonar(5, 5)    // presence -> normal detection
-        assertTrue("cycle should complete normally (no out of service)",
-            waitUntil(25000) { holdField(0) == "disengaged" && lastHold.contains("occupied") })
-    }
-
-    /** TP2.6 - boundary discipline: a request while engaged is never queued. */
-    @Test
-    fun test5_boundaryDisciplineWhileEngaged() {
-        presetHold("empty")
-        publishLoadRequest()
-        assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
-
-        // Hold the sonar at a NEUTRAL mid-range reading during the boundary check (DFREE/2 < 22 <
-        // DFREE resets both counters, Sonar.kt:100): otherwise a far reading left in lastDistance by
-        // a previous plan would trip Out of service during the ~1.5 s window before the presence stream.
-        publishSonar(22)
-
-        // a second request during the window: must not create a second reservation
-        publishLoadRequest()
+        publishSonar(22)       // neutral mid-range: keeps the sonar quiet (resets both counters) so a
+                               // far reading left by a previous plan cannot trip Out of service here
+        publishLoadRequest()   // second request during the window
         Thread.sleep(1500)
 
-        // complete the first operation
-        streamSonar(5, 5)
-        assertTrue("only one slot must be occupied at the end",
-            waitUntil(25000) {
-                holdField(0) == "disengaged" &&
-                    Regex("occupied").findAll(lastHold).count() == 1
-            })
+        streamSonar(5, 5)      // complete the first operation
+        assertTrue("only one slot must be occupied at the end (no second reservation)",
+            waitUntil(25000) { holdField(0) == "disengaged" && occupiedCount() == 1 })
+    }
+
+    /** TP1.4 — engagement timeout discards the reservation (container accepted but never brought close). */
+    @Test
+    fun test4_engagementTimeoutDiscardsReservation() {
+        presetHold("empty")
+        publishLoadRequest()
+        assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
+
+        // On the Sprint 2 chain the logic sonar measures continuously during the window, and its
+        // "no reading yet" default (Double.MAX_VALUE) already counts as FAR (> DFREE) -> that would
+        // trip Out of service, not a silent timeout. To exercise the genuine 30 s window expiry
+        // (customer accepted but never brings the container close enough), feed a MID-RANGE distance
+        // DFREE/2 < d < DFREE (15 < 22 < 30): neither a detection nor a failure, so the window simply
+        // expires and the reservation is discarded.
+        streamSonar(22, 34)   // ~34 s of neutral readings; the 30 s window expires within it
+
+        assertTrue("after the window the hold must be disengaged with NO slot occupied",
+            waitUntil(3000) { holdField(0) == "disengaged" && !lastHold.contains("occupied") })
+    }
+
+    /** TP1.5 — complete load cycle (the same assertion as TP2.4 on the logic-sonar chain). */
+    @Test
+    fun test5_completeLoadCycle() {
+        presetHold("empty")
+        publishLoadRequest()
+        assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
+
+        streamSonar(5, 5) // sustained presence (< DFREE/2 = 15 cm) for a few seconds
+        assertTrue("the full trip must complete: disengaged with exactly one slot occupied",
+            waitUntil(25000) { holdField(0) == "disengaged" && occupiedCount() == 1 })
     }
 }
