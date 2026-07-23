@@ -5,10 +5,10 @@ import network
 from umqtt.simple import MQTTClient
 
 # ----------------- CONFIGURAZIONE -----------------
-WIFI_SSID = "" # wifi name
-WIFI_PASSWORD = "" # wifi password
+WIFI_SSID = "TIM-82409991" # wifi name
+WIFI_PASSWORD = "9Gde9d7A5DDqqUQRgku6Hbp7" # wifi password
 
-MQTT_BROKER = "" # mosquitto host ip
+MQTT_BROKER = "192.168.1.5" # mosquitto host ip
 MQTT_PORT = 1883
 MQTT_CLIENT_ID = "pico_w_sonar_led"
 

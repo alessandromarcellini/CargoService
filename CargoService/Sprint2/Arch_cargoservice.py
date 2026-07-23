@@ -29,8 +29,6 @@ with Diagram('cargoserviceArch', show=False, outformat='png', graph_attr=graphat
           cargoservice=Custom('cargoservice','./qakicons/symActorWithobjSmall.png')
           sonar=Custom('sonar','./qakicons/symActorWithobjSmall.png')
           cargorobot=Custom('cargorobot','./qakicons/symActorWithobjSmall.png')
-          simsonar=Custom('simsonar','./qakicons/symActorWithobjSmall.png')
-          simled=Custom('simled','./qakicons/symActorWithobjSmall.png')
      with Cluster('ctxrobotsmart', graph_attr=nodeattr):
           robotsmart=Custom('robotsmart(ext)','./qakicons/externalQActor.png')
      sys >> Edge( label='container_detected', **evattr, decorate='true', fontcolor='darkgreen') >> cargoservice

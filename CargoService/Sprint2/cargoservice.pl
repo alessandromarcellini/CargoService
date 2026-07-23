@@ -12,7 +12,6 @@ dispatch( cargoservice_goto_accept, cargoservice_goto_accept(none) ).
 dispatch( cargoservice_goto_waiting, cargoservice_goto_waiting(none) ).
 dispatch( cargoservice_window_expired, cargoservice_window_expired(none) ).
 dispatch( sonar_tick, sonar_tick(none) ).
-dispatch( sim_next, sim_next(none) ).
 request( preset_hold, preset_hold(HOLDCONFIG) ).
 reply( preset_done, preset_done(ARG) ).  %%for preset_hold
 request( reachTarget, reachTarget(TARGETX,TARGETY) ).
@@ -31,7 +30,3 @@ context(ctxrobotsmart, "127.0.0.1",  "TCP", "8020").
  static(sonar).
   qactor( cargorobot, ctxcargoservice, "it.unibo.cargorobot.Cargorobot").
  static(cargorobot).
-  qactor( simsonar, ctxcargoservice, "it.unibo.simsonar.Simsonar").
- static(simsonar).
-  qactor( simled, ctxcargoservice, "it.unibo.simled.Simled").
- static(simled).

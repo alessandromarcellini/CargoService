@@ -1,30 +1,26 @@
 System cargoservice
 // ============================================================================
-// CargoService - Sprint 2 executable model  (Villani Alessandro, Marcellini Alessandro)
+// CargoService - Sprint 2 - SIMULATED-DEVICES variant.
 //
-// Deltas over Sprint 1 (see userDocs/sprint2_v0.html):
-//   * logic sonar: a QActor on the cargoservice node. It ingests the RAW distance
-//     stream published by the device on the MQTT topic "sonar_data", runs two
-//     persistence counters (presence D<DFREE/2, failure D>DFREE, each ~3 s at
-//     1 Hz) and emits the DECLARED events container_detected / out_of_service.
-//     It listens ONLY while the engagement window is open (start_detection /
-//     stop_detection from cargoservice).
-//   * cargoservice: reacts to container_detected / out_of_service (only in its
-//     window states); commands the LED by RAW-publishing start_blinking/
-//     stop_blinking on "led_data"; publishes the hold state as a qak msg(...)
-//     envelope on "hold_state" (answer + display feed); receives the load
-//     request as a qak msg(...) envelope on "load_requests" (from the web GUI).
-//   * NO ioport actor (retired: it was the mock of the now-real web GUI).
-//   * NO get_hold pull channel (tests observe the pushed hold_state). preset_hold
-//     kept for test controllability only.
-//   * NO robot halt: a sonar failure cannot occur mid-trip (window closed), so the
-//     only movement-time Out of service is the robot failure (Sprint 1, unchanged).
+// Identical to cargoservice_sprint2.qak, PLUS two simulated device actors
+// (simsonar + simled) deployed in the SAME context (ctxcargoservice), so a
+// single `gradlew run` brings up the whole hardware-free demo - no second
+// Gradle project, no second main, no separate task.
+//
+//   * cargoservice_sprint2.qak      -> FIELD variant (real Pico W on the topics)
+//   * cargoservice_sprint2_sim.qaktt -> SIMULATED variant (this file)
+//
+// Only ONE of the two may be an active `.qak` at a time (the Xtext builder would
+// otherwise generate two copies of Cargoservice.kt). To use this variant: rename
+// cargoservice_sprint2.qak -> cargoservice_sprint2.qaktt and this file ->
+// cargoservice_sprint2_sim.qak, then regenerate. Both variants use the same main
+// (it.unibo.ctxcargoservice.MainCtxcargoserviceKt) and the same run command.
 //
 // MQTT topics (broker: Mosquitto @ localhost:1883):
-//   sonar_data     RAW   device -> logic sonar      e.g. "22.5"
-//   led_data       RAW   cargoservice -> device     "start_blinking" | "stop_blinking"
-//   load_requests  qak   web GUI -> cargoservice     msg(load_request,...)
-//   hold_state     qak   cargoservice -> web GUI     msg(holdstatus,...)
+//   sonar_data     RAW   simsonar -> logic sonar     e.g. "22.5"
+//   led_data       RAW   cargoservice -> simled      "start_blinking" | "stop_blinking"
+//   load_requests  qak   web GUI -> cargoservice      msg(load_request,...)
+//   hold_state     qak   cargoservice -> web GUI      msg(holdstatus,...)
 // ============================================================================
 
 mqttBroker "localhost" : 1883 eventTopic "cargoservice"
@@ -36,7 +32,6 @@ Event    holdstatus   : holdstatus(STATE,WORKING,S1,S2,S3,S4,RESERVED)
 // ---- logic sonar <-> cargoservice (declared, meaningful events)
 Event    container_detected : container_detected(none)
 Event    out_of_service     : out_of_service(none)
-// cargoservice opens/closes the logic sonar's listening at the window boundaries
 Dispatch start_detection : start_detection(none)
 Dispatch stop_detection  : stop_detection(none)
 
@@ -45,8 +40,9 @@ Dispatch cargoservice_goto_accept : cargoservice_goto_accept(none)
 Dispatch cargoservice_goto_waiting : cargoservice_goto_waiting(none)
 Dispatch cargoservice_window_expired : cargoservice_window_expired(none)
 
-// ---- internal timed loop of the logic sonar (1 Hz poll of the last reading)
+// ---- internal timed loops
 Dispatch sonar_tick : sonar_tick(none)
+Dispatch sim_next   : sim_next(none)
 
 // ---- test support (controllability ONLY; observation is the pushed hold_state)
 Request preset_hold : preset_hold(HOLDCONFIG)
@@ -63,8 +59,8 @@ Reply   moverobotdone : moverobotdone(ARG) for moverobot
 Reply   moverobotfailed : moverobotfailed(PLANDONE, PLANTODO) for moverobot
 
 // ----------------------------------------------------------------------------
-// Contexts. cargoservice + cargorobot + logic sonar are CO-LOCATED on the
-// cargoservice node (the logic sonar lives here per the Sprint 1 promise).
+// cargoservice + cargorobot + logic sonar + the SIMULATED devices are all
+// CO-LOCATED on the cargoservice node (ctxcargoservice): one process, one run.
 // ----------------------------------------------------------------------------
 Context ctxcargoservice ip [host="localhost" port=8030]
 Context ctxrobotsmart   ip [host="127.0.0.1" port=8020]   // reused asset, port fixed by committente
@@ -86,22 +82,22 @@ QActor cargoservice context ctxcargoservice {
 		val DFREE = 30
 
 		var SlotsList: List<ISlot> = listOf(
-			Slot(1, 1, 2),
-			Slot(2, 1, 5),
-			Slot(3, 3, 2),
-			Slot(4, 3, 5)
+			Slot(1, 1, 1),
+			Slot(2, 1, 4),
+			Slot(3, 3, 1),
+			Slot(4, 3, 4)
 		)
-		var IOPortX = 6
-		var IOPortY = 1
+		// 6x8
+		var IOPortX = 4
+		var IOPortY = 0
 		var HomeX   = 0
 		var HomeY   = 0
 		var Slot5X  = 2
-		var Slot5Y  = 6
+		var Slot5Y  = 5
 
 		fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? =
 			slots.firstOrNull { slot -> slot.content == null }
 
-		// lowercase atoms only (qak parses Uppercase as logical variables)
 		fun slotAtom(slot: ISlot): String =
 			if (slot.content != null) "occupied"
 			else if (CurrentSlotToFill != null && CurrentSlotToFill!!.id == slot.id) "reserved"
@@ -128,14 +124,12 @@ QActor cargoservice context ctxcargoservice {
 
 	State s0 initial {
 		println("[CARGO SERVICE] started - subscribing to the boundary topic load_requests") color blue
-		// boundary IN: the web GUI publishes qak msg(...) envelopes on load_requests
 		subscribe "load_requests"
 	}
 	Goto waiting
 
 	State waiting {
 		println("[CARGO SERVICE] hold ${'$'}CurrentHoldState: waiting for load_requests") color green
-		// push the current state so a freshly-connected GUI paints the display
 		[# val St = stateAtom(); val Wk = workingAtom();
 		   val A1 = slotAtom(SlotsList[0]); val A2 = slotAtom(SlotsList[1]);
 		   val A3 = slotAtom(SlotsList[2]); val A4 = slotAtom(SlotsList[3]);
@@ -146,7 +140,6 @@ QActor cargoservice context ctxcargoservice {
 		whenMsg load_request -> handle_load_request
 		whenRequest preset_hold -> serve_preset_hold
 
-	// -------- test controllability (no observation here: that is the push) -----
 	State serve_preset_hold {
 		onMsg( preset_hold : preset_hold(HOLDCONFIG) ) {
 			[# val Config = payloadArg(0); ApplyPreset(Config) #]
@@ -155,7 +148,6 @@ QActor cargoservice context ctxcargoservice {
 	}
 	Goto waiting
 
-	// -------- the load decision (mutually exclusive; answer = a hold_state push)
 	State handle_load_request {
 		println("[CARGO SERVICE] evaluating load request...") color cyan
 		if [# CurrentHoldState != HoldState.DISENGAGED #] {
@@ -179,18 +171,13 @@ QActor cargoservice context ctxcargoservice {
 		whenMsg cargoservice_goto_accept  -> accept_load_request
 		whenMsg cargoservice_goto_waiting -> waiting
 
-	// -------- engagement window ------------------------------------------------
 	State accept_load_request {
-		// LED on (RAW command on led_data), open the sonar listening, push the state
 		[# publish("start_blinking", "led_data") #]
 		forward sonar -m start_detection : start_detection(none)
-		// one-shot 30 s window timer. NOT the qak state-timer (whenTime): the qak
-		// TimerActor derives its owner from local_tout_<actor>_<state> via
-		// substringBeforeLast("_"), which breaks on underscored state names
-		// (endless "TimerActor TOO FAST ERROR"). Instead a single coroutine armed
-		// here dispatches cargoservice_window_expired to self after 30 s; it is
-		// cancelled if the window closes early, so a stale timer can never expire a
-		// later engagement.
+		// one-shot 30 s window timer. NOT the qak state-timer (see runbook): a single
+		// coroutine armed here dispatches cargoservice_window_expired to self after 30 s;
+		// cancelled if the window closes early, so a stale timer cannot expire a later
+		// engagement.
 		[#
 			windowJob?.cancel()
 			windowJob = kotlinx.coroutines.GlobalScope.launch {
@@ -210,7 +197,6 @@ QActor cargoservice context ctxcargoservice {
 		whenEvent out_of_service     -> sonar_out_of_service
 		whenMsg load_request         -> engaged_retrylater
 
-	// a request racing the engaged state: never queued, answered with the busy state
 	State engaged_retrylater {
 		println("[CARGO SERVICE] engaged: pushing busy state to a concurrent request") color cyan
 		[# val St = stateAtom(); val Wk = workingAtom();
@@ -246,7 +232,6 @@ QActor cargoservice context ctxcargoservice {
 	}
 	Goto waiting
 
-	// -------- the container trip (sonar is silent from here on) -----------------
 	State start_trip {
 		println("[CARGO SERVICE] container detected: LED off, close listening, start the trip") color magenta
 		[# windowJob?.cancel() #]
@@ -295,7 +280,6 @@ QActor cargoservice context ctxcargoservice {
 		whenReply targetReached     -> switch_to_disengaged
 		whenReply targetUnreachable -> switch_to_disengaged
 
-	// robot failure = the ONLY movement-time Out of service (terminal, Sprint 1)
 	State abort_transfer {
 		println("[CARGO SERVICE] robot failure -> hold OUT OF SERVICE (terminal)") color red
 		[# CurrentSlotToFill = null; CurrentHoldState = HoldState.OUT_OF_SERVICE #]
@@ -309,22 +293,16 @@ QActor cargoservice context ctxcargoservice {
 }
 
 // ============================================================================
-// logic sonar - interprets the RAW device stream; lives on the cargoservice node.
-// Ingests sonar_data with an embedded MQTT client (raw payloads are NOT qak
-// envelopes, so the framework's `subscribe`+whenEvent cannot parse them); the
-// callback only stores the latest reading in a thread-safe holder, and the FSM
-// polls it at ~1 Hz while its listening is open. Emitting the declared events
-// happens on the actor thread, never from the MQTT callback thread.
+// logic sonar - interprets the RAW device stream (embedded MQTT client + 1 Hz poll)
 // ============================================================================
 QActor sonar context ctxcargoservice {
 
 	[#
-		// last raw distance seen on sonar_data (cm); shared with the MQTT callback thread
 		val lastDistance = java.util.concurrent.atomic.AtomicReference<Double>(java.lang.Double.MAX_VALUE)
 		var mqttIn: org.eclipse.paho.client.mqttv3.MqttClient? = null
 
-		val DFREE = 30                 // must match cargoservice
-		val PERSISTENCE = 3            // 3 consecutive seconds at the 1 Hz device rate
+		val DFREE = 30
+		val PERSISTENCE = 3
 		var presenceCount = 0
 		var failureCount  = 0
 
@@ -362,7 +340,6 @@ QActor sonar context ctxcargoservice {
 		whenMsg start_detection -> observing
 
 	State observing {
-		// poll loop: one tick per second (aligned with the 1 Hz device rate)
 		autodispatch sonar_tick : sonar_tick(none)
 	}
 	Transition t0
@@ -380,8 +357,6 @@ QActor sonar context ctxcargoservice {
 	}
 	Goto emit_detected if [# presenceCount >= PERSISTENCE #] else check_failure
 
-	// a stop_detection arriving during the 1 s tick is caught one tick later, in
-	// observing (whenMsg stop_detection -> idle): the loop converges to idle.
 	State check_failure { }
 	Goto emit_failure if [# failureCount >= PERSISTENCE #] else observing
 
@@ -401,11 +376,10 @@ QActor sonar context ctxcargoservice {
 }
 
 // ============================================================================
-// cargorobot - pure protocol adapter reachTarget(X,Y) -> moverobot(X,Y,STEPTIME).
-// Unchanged from Sprint 1 (no halt: no out_of_service can reach the trip states).
+// cargorobot - pure protocol adapter reachTarget(X,Y) -> moverobot(X,Y,STEPTIME)
 // ============================================================================
 QActor cargorobot context ctxcargoservice {
-	[# val StepTime = 350 #]
+	[# val StepTime = 345 #]
 
 	State s0 initial {
 		println("[CARGOROBOT] ready (adapter towards the external robotsmart)") color yellow
@@ -436,4 +410,82 @@ QActor cargorobot context ctxcargoservice {
 		replyTo reachTarget with targetUnreachable : targetUnreachable(fail)
 	}
 	Goto waiting
+}
+
+// ============================================================================
+// SIMULATED DEVICES (co-located in ctxcargoservice - the whole point of this
+// variant: one process, one run). They stand in for the Pico W on the SAME
+// MQTT topics, so cargoservice and the logic sonar are unaware of the swap.
+// ============================================================================
+
+// sim sonar: reads sonarDistances.txt (cm) and RAW-publishes one value/second
+// on sonar_data - exactly what the board firmware does.
+QActor simsonar context ctxcargoservice {
+	[#
+		fun loadDistances(): List<String> {
+			val fallback = listOf("100","100","100","100","100","100","100","100","5","5","5","5")
+			val commentChar = 35.toChar()
+			return try {
+				val vals = java.io.File("sonarDistances.txt").readLines()
+					.map { line -> line.substringBefore(commentChar).trim() }
+					.filter { line -> line.isNotEmpty() }
+					.flatMap { line -> line.split(",").map { p -> p.trim() } }
+					.filter { p -> p.isNotEmpty() }
+				if (vals.isEmpty()) fallback else vals
+			} catch (e: Exception) { fallback }
+		}
+		val distances = loadDistances()
+		var idx = 0
+	#]
+
+	State s0 initial {
+		println("[SIM SONAR] started - publishing values (cyclic) on sonar_data") color yellow
+	}
+	Goto publish_one
+
+	State publish_one {
+		[# val v = distances[idx % distances.size]
+		   idx = idx + 1
+		   publish(v, "sonar_data")
+		   println("[SIM SONAR] sonar_data <- " + v + " cm") #]
+		delay 1000
+		autodispatch sim_next : sim_next(none)
+	}
+	Transition t0
+		whenMsg sim_next -> publish_one
+}
+
+// sim led: subscribes RAW to led_data and renders the blink commands.
+QActor simled context ctxcargoservice {
+	[#
+		var mqttIn: org.eclipse.paho.client.mqttv3.MqttClient? = null
+		fun ensureSubscribed() {
+			if (mqttIn != null) return
+			try {
+				val cli = org.eclipse.paho.client.mqttv3.MqttClient(
+					"tcp://localhost:1883", "simLedIn_" + System.currentTimeMillis(),
+					org.eclipse.paho.client.mqttv3.persist.MemoryPersistence())
+				val opts = org.eclipse.paho.client.mqttv3.MqttConnectOptions()
+				opts.isCleanSession = true
+				cli.connect(opts)
+				cli.subscribe("led_data") { _, message ->
+					val cmd = String(message.payload).trim()
+					if (cmd == "start_blinking") println("[SIM LED] *** LED BLINKING ***")
+					else if (cmd == "stop_blinking") println("[SIM LED] LED off")
+					else println("[SIM LED] ignored payload: " + cmd)
+				}
+				mqttIn = cli
+			} catch (e: Exception) {
+				println("[SIM LED] MQTT subscribe error: " + e.message)
+			}
+		}
+	#]
+
+	State s0 initial {
+		println("[SIM LED] started - subscribing to led_data") color yellow
+		[# ensureSubscribed() #]
+	}
+	Goto listening
+
+	State listening { }
 }

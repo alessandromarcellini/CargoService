@@ -30,11 +30,12 @@ class Sonar ( name: String, scope: CoroutineScope, isconfined: Boolean=false, is
 		//val interruptedStateTransitions = mutableListOf<Transition>()
 		//IF actor.withobj !== null val actor.withobj.name� = actor.withobj.method�ENDIF
 		
+				// last raw distance seen on sonar_data (cm); shared with the MQTT callback thread
 				val lastDistance = java.util.concurrent.atomic.AtomicReference<Double>(java.lang.Double.MAX_VALUE)
 				var mqttIn: org.eclipse.paho.client.mqttv3.MqttClient? = null
 		
-				val DFREE = 30
-				val PERSISTENCE = 3
+				val DFREE = 30                 // must match cargoservice
+				val PERSISTENCE = 3            // 3 consecutive seconds at the 1 Hz device rate
 				var presenceCount = 0
 				var failureCount  = 0
 		

@@ -40,21 +40,23 @@ class Cargoservice ( name: String, scope: CoroutineScope, isconfined: Boolean=fa
 				val DFREE = 30
 		
 				var SlotsList: List<ISlot> = listOf(
-					Slot(1, 1, 2),
-					Slot(2, 1, 5),
-					Slot(3, 3, 2),
-					Slot(4, 3, 5)
+					Slot(1, 1, 1),
+					Slot(2, 1, 4),
+					Slot(3, 3, 1),
+					Slot(4, 3, 4)
 				)
-				var IOPortX = 6
-				var IOPortY = 1
+				// 6x8
+				var IOPortX = 4
+				var IOPortY = 0
 				var HomeX   = 0
 				var HomeY   = 0
 				var Slot5X  = 2
-				var Slot5Y  = 6
+				var Slot5Y  = 5
 		
 				fun FindFirstFreeSlot(slots: List<ISlot>): ISlot? =
 					slots.firstOrNull { slot -> slot.content == null }
 		
+				// lowercase atoms only (qak parses Uppercase as logical variables)
 				fun slotAtom(slot: ISlot): String =
 					if (slot.content != null) "occupied"
 					else if (CurrentSlotToFill != null && CurrentSlotToFill!!.id == slot.id) "reserved"
