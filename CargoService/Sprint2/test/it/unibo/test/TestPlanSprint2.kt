@@ -182,14 +182,24 @@ class TestPlanSprint2 {
         publishLoadRequest()
         assertTrue("system should become engaged", waitUntil(6000) { holdField(0) == "engaged" })
 
-        // Establish a valid baseline first: the logic sonar seeds its last reading to FAR
-        // (Double.MAX_VALUE), so with no real reading the window opens already counting failures
-        // and even a 2 s burst tips it over the 3 s threshold. Feed 2 s of a neutral MID-RANGE
-        // distance (DFREE/2 < 22 < DFREE: sensor working, nothing close -> no detection, no failure),
-        // THEN the transient 2 s failure (< 3 s persistence), THEN the presence.
-        streamSonar(22, 2)   // neutral baseline
-        streamSonar(120, 2)  // 2 s of failure (not sustained): must NOT trip Out of service
-        streamSonar(5, 5)    // presence -> normal detection
+        // Neutral baseline at window open: the logic sonar seeds its last reading to FAR
+        // (Double.MAX_VALUE) and keeps lastDistance between plans, so a mid-range value
+        // (DFREE/2 < 22 < DFREE: sensor working, nothing close) is published first to RESET
+        // both the presence and failure counters (Sonar.kt:100) before the transient burst.
+        publishSonar(22)
+        Thread.sleep(1500)
+
+        // Transient failure kept STRICTLY shorter than the 3 s persistence threshold. Two far
+        // readings ~1 s apart, then we flip to presence immediately: this removes the ~1 s
+        // "value-hold" linger that streamSonar leaves after its last sample (which would push
+        // the far reading to ~3 s and could trip a FALSE Out of service on a 1 Hz tick).
+        publishSonar(120)
+        Thread.sleep(1000)
+        publishSonar(120)
+        Thread.sleep(300)
+
+        // Presence (< DFREE/2 = 15 cm) sustained -> container_detected -> normal cycle.
+        streamSonar(5, 6)
         assertTrue("cycle should complete normally (no out of service)",
             waitUntil(25000) { holdField(0) == "disengaged" && lastHold.contains("occupied") })
     }
